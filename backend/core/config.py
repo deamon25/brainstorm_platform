@@ -4,7 +4,7 @@ Configuration settings for Brainstorm Platform Service
 import os
 from pathlib import Path
 from typing import Optional, List
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 
@@ -34,16 +34,30 @@ class Settings(BaseSettings):
         """Parse CORS origins from comma-separated string"""
         return [origin.strip() for origin in self.BACKEND_CORS_ORIGINS.split(",")]
     
-    # Model Paths
-    BASE_DIR: Path = Path(__file__).parent.parent.parent
-    MODELS_DIR: Path = BASE_DIR / "models" / "brainstorm_platform"
+    # Model Paths — overridable via env; sub-paths derived in validator below
+    MODELS_DIR: Path = Path(__file__).parent.parent.parent / "models" / "brainstorm_platform"
     
-    ENTITY_NER_MODEL_PATH: Path = MODELS_DIR / "entity_ner_model"
-    ENTITY_REPHRASER_MODEL_PATH: Path = MODELS_DIR / "entity_rephraser_model"
-    HESITATION_MODEL_PATH: Path = MODELS_DIR / "hesitation_model" / "hesitation_model .pkl"
-    SCALER_PATH: Path = MODELS_DIR / "hesitation_model" / "scaler.pkl"
-    SPEECH_HESITATION_MODEL_PATH: Path = MODELS_DIR / "hesitation_speech_model" / "speech_hesitation_model.pth"
-    
+    ENTITY_NER_MODEL_PATH: Optional[Path] = None
+    ENTITY_REPHRASER_MODEL_PATH: Optional[Path] = None
+    HESITATION_MODEL_PATH: Optional[Path] = None
+    SCALER_PATH: Optional[Path] = None
+    SPEECH_HESITATION_MODEL_PATH: Optional[Path] = None
+
+    @model_validator(mode="after")
+    def derive_model_paths(self) -> "Settings":
+        base = self.MODELS_DIR
+        if self.ENTITY_NER_MODEL_PATH is None:
+            self.ENTITY_NER_MODEL_PATH = base / "entity_ner_model"
+        if self.ENTITY_REPHRASER_MODEL_PATH is None:
+            self.ENTITY_REPHRASER_MODEL_PATH = base / "entity_rephraser_model"
+        if self.HESITATION_MODEL_PATH is None:
+            self.HESITATION_MODEL_PATH = base / "hesitation_model" / "hesitation_model .pkl"
+        if self.SCALER_PATH is None:
+            self.SCALER_PATH = base / "hesitation_model" / "scaler.pkl"
+        if self.SPEECH_HESITATION_MODEL_PATH is None:
+            self.SPEECH_HESITATION_MODEL_PATH = base / "hesitation_speech_model" / "speech_hesitation_model.pth"
+        return self
+
     # Server
     HOST: str = "0.0.0.0"
     PORT: int = 8004
@@ -58,3 +72,4 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
