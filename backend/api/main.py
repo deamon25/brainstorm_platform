@@ -66,8 +66,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "Accept"],
 )
 
 # Include routes
@@ -98,11 +98,9 @@ async def health_check():
         "service": settings.PROJECT_NAME,
         "version": settings.API_VERSION,
         "database": {
-            "connected": database.is_connected(),
-            "name": settings.MONGODB_DB_NAME
+            "connected": database.is_connected()
         },
-        "models": models_status,
-        "cors_origins": settings.cors_origins
+        "models": models_status
     }
     
     # Overall status

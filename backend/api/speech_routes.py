@@ -27,6 +27,8 @@ _ALLOWED_AUDIO_TYPES = {
     "application/octet-stream",  # generic binary — librosa will try to decode
 }
 
+_MAX_AUDIO_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB per file
+
 
 # ---------------------------------------------------------------------------
 # Health
@@ -94,6 +96,12 @@ async def predict_speech_hesitation(
                 detail="Uploaded audio file is empty",
             )
 
+        if len(audio_bytes) > _MAX_AUDIO_SIZE_BYTES:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail="Audio file exceeds the 10 MB size limit",
+            )
+
         result = speech_hesitation_detector.predict_from_bytes(audio_bytes)
         logger.info(
             f"Speech hesitation prediction: {result.label} "
@@ -107,7 +115,7 @@ async def predict_speech_hesitation(
         logger.error(f"Speech hesitation prediction failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Speech hesitation prediction failed: {str(e)}",
+            detail="Speech hesitation prediction failed. Please try again later.",
         )
 
 
@@ -151,7 +159,7 @@ async def predict_speech_hesitation_base64(request: SpeechHesitationBase64Reques
         logger.error(f"Speech hesitation base64 prediction failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Speech hesitation prediction failed: {str(e)}",
+            detail="Speech hesitation prediction failed. Please try again later.",
         )
 
 
@@ -200,6 +208,11 @@ async def predict_speech_hesitation_batch(
         pairs: list[tuple[str, bytes]] = []
         for upload in audio_files[:10]:
             content = await upload.read()
+            if len(content) > _MAX_AUDIO_SIZE_BYTES:
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail=f"File '{upload.filename}' exceeds the 10 MB size limit",
+                )
             pairs.append((upload.filename or "unknown", content))
 
         results: list[SpeechHesitationBatchItemResult] = (
@@ -215,5 +228,5 @@ async def predict_speech_hesitation_batch(
         logger.error(f"Batch speech hesitation prediction failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Batch prediction failed: {str(e)}",
+            detail="Batch prediction failed. Please try again later.",
         )

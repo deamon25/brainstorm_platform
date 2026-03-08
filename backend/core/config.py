@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     API_VERSION: str = "v1"
     API_PREFIX: str = f"/api/{API_VERSION}"
     PROJECT_NAME: str = "Brainstorm Platform Service"
-    DEBUG: bool = True
+    DEBUG: bool = False
     
     # CORS
     BACKEND_CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"

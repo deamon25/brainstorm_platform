@@ -45,21 +45,15 @@ class Database:
             
             # For MongoDB Atlas with SSL/TLS issues on Windows
             if is_atlas:
-                logger.info("Detected MongoDB Atlas - applying Windows SSL compatibility settings")
-                
-                # Add modified connection string parameters
-                parsed_url = settings.MONGODB_URL
-                separator = '&' if '?' in parsed_url else '?'
-                
-                # Add SSL/TLS parameters directly to connection string for better compatibility
-                if 'tls=' not in parsed_url.lower() and 'ssl=' not in parsed_url.lower():
-                    parsed_url += f"{separator}tls=true&tlsAllowInvalidCertificates=true&tlsAllowInvalidHostnames=true"
-                
+                logger.info("Detected MongoDB Atlas - connecting with verified TLS")
+
+                connection_kwargs["tls"] = True
+                connection_kwargs["tlsCAFile"] = certifi.where()
                 connection_kwargs["retryWrites"] = True
                 connection_kwargs["w"] = "majority"
-                
+
                 cls.client = AsyncIOMotorClient(
-                    parsed_url,
+                    settings.MONGODB_URL,
                     **connection_kwargs
                 )
             else:

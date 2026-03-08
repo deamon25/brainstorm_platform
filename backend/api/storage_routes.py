@@ -69,7 +69,7 @@ async def create_idea(request: CreateIdeaRequest):
         logger.error(f"Failed to create idea: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create idea: {str(e)}"
+            detail="Failed to create idea. Please try again later."
         )
 
 
@@ -96,7 +96,7 @@ async def get_idea(idea_id: str):
         logger.error(f"Failed to get idea: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get idea: {str(e)}"
+            detail="Failed to retrieve idea. Please try again later."
         )
 
 
@@ -144,7 +144,7 @@ async def get_ideas(
         logger.error(f"Failed to get ideas: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get ideas: {str(e)}"
+            detail="Failed to retrieve ideas. Please try again later."
         )
 
 
@@ -185,7 +185,7 @@ async def update_idea(idea_id: str, request: UpdateIdeaRequest):
         logger.error(f"Failed to update idea: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update idea: {str(e)}"
+            detail="Failed to update idea. Please try again later."
         )
 
 
@@ -205,7 +205,7 @@ async def delete_idea(idea_id: str):
         logger.error(f"Failed to delete idea: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete idea: {str(e)}"
+            detail="Failed to delete idea. Please try again later."
         )
 
 
@@ -241,7 +241,7 @@ async def create_session(request: CreateSessionRequest):
         logger.error(f"Failed to create session: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create session: {str(e)}"
+            detail="Failed to create session. Please try again later."
         )
 
 
@@ -270,7 +270,7 @@ async def get_session(session_id: str):
         logger.error(f"Failed to get session: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get session: {str(e)}"
+            detail="Failed to retrieve session. Please try again later."
         )
 
 
@@ -307,7 +307,7 @@ async def get_sessions(
         logger.error(f"Failed to get sessions: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get sessions: {str(e)}"
+            detail="Failed to retrieve sessions. Please try again later."
         )
 
 
@@ -337,5 +337,5 @@ async def get_session_statistics(session_id: str):
         logger.error(f"Failed to get session statistics: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get session statistics: {str(e)}"
+            detail="Failed to retrieve session statistics. Please try again later."
         )

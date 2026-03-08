@@ -28,9 +28,7 @@ python-dotenv==1.0.0
 certifi>=2024.2.2
 dnspython>=2.6.1
 
-# CORS & Middleware
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
+# Date utilities
 python-dateutil==2.8.2
 
 # Development

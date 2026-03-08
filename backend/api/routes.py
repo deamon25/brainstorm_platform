@@ -60,7 +60,7 @@ async def extract_entities(request: TextAnalysisRequest):
         logger.error(f"Entity extraction failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Entity extraction failed: {str(e)}"
+            detail="Entity extraction failed. Please try again later."
         )
 
 
@@ -104,7 +104,7 @@ async def detect_hesitation(request: TypingSessionRequest):
         logger.error(f"Hesitation detection failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Hesitation detection failed: {str(e)}"
+            detail="Hesitation detection failed. Please try again later."
         )
 
 
@@ -123,7 +123,7 @@ async def rephrase_text(request: RephraseRequest):
         logger.error(f"Rephrasing failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Rephrasing failed: {str(e)}"
+            detail="Rephrasing failed. Please try again later."
         )
 
 
@@ -183,7 +183,7 @@ async def entity_preserving_rephrase(request: EntityPreservingRephraseRequest):
         logger.error(f"Entity-preserving rephrasing failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Entity-preserving rephrasing failed: {str(e)}"
+            detail="Entity-preserving rephrasing failed. Please try again later."
         )
 
 
@@ -240,7 +240,7 @@ async def comprehensive_analysis(request: BrainstormAnalysisRequest):
         logger.error(f"Comprehensive analysis failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Analysis failed: {str(e)}"
+            detail="Analysis failed. Please try again later."
         )
 
 
