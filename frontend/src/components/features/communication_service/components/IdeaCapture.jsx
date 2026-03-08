@@ -5,8 +5,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Lightbulb, 
-  Mic, 
-  MicOff, 
   UserX, 
   User, 
   Send, 
@@ -16,10 +14,12 @@ import {
 } from 'lucide-react';
 import useBrainstormStore from '../store/brainstormStore';
 import { processIdeaForPreview } from '../api/brainstormApi';
+import useSpeechHesitation from '../hooks/useSpeechHesitation';
+import SpeechMicButton from './SpeechMicButton';
+import SpeechHesitationPanel from './SpeechHesitationPanel';
 
 const IdeaCapture = () => {
   const [ideaText, setIdeaText] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
   const [typingStatus, setTypingStatus] = useState('idle'); // 'idle' | 'typing' | 'analyzing'
   const [localError, setLocalError] = useState(null);
   const textareaRef = useRef(null);
@@ -40,6 +40,26 @@ const IdeaCapture = () => {
     getTypingMetricsForApi,
     currentSession,
   } = useBrainstormStore();
+
+  // ── Speech hesitation hook ────────────────────────────────────────
+  const sessionId = currentSession?._id || currentSession?.id || null;
+  const {
+    isRecording,
+    isAnalysing,
+    hesitationResult,
+    hesitationDetected,
+    error: speechError,
+    audioLevel,
+    startRecording,
+    stopRecording,
+    dismissHesitation,
+  } = useSpeechHesitation(sessionId);
+
+  // When the user clicks a suggestion from the panel, append it to the textarea
+  const handleSuggestionClick = useCallback((text) => {
+    setIdeaText((prev) => (prev.trim() ? prev.trimEnd() + ' ' + text : text));
+    setTimeout(() => textareaRef.current?.focus(), 50);
+  }, []);
 
   // Initialize typing metrics when component mounts
   useEffect(() => {
@@ -76,40 +96,7 @@ const IdeaCapture = () => {
     setLocalError(null);
   };
 
-  const handleVoiceInput = () => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      setLocalError('Voice input is not supported in this browser');
-      return;
-    }
-
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    
-    recognition.continuous = false;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
-
-    if (!isRecording) {
-      recognition.start();
-      setIsRecording(true);
-      
-      recognition.onresult = (event) => {
-        const transcript = Array.from(event.results)
-          .map(result => result[0].transcript)
-          .join('');
-        setIdeaText(prev => prev + ' ' + transcript);
-      };
-
-      recognition.onerror = (event) => {
-        setLocalError('Voice recognition error: ' + event.error);
-        setIsRecording(false);
-      };
-
-      recognition.onend = () => {
-        setIsRecording(false);
-      };
-    }
-  };
+  // Voice input toggling is now handled by useSpeechHesitation (startRecording / stopRecording)
 
   const handleSubmit = async () => {
     if (!ideaText.trim()) {
@@ -189,11 +176,11 @@ const IdeaCapture = () => {
 
         {/* Content */}
         <div className="p-6">
-          {/* Error Alert */}
-          {localError && (
+          {/* Error Alert — covers both typing-submit errors and mic errors */}
+          {(localError || speechError) && (
             <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
               <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={20} />
-              <p className="text-red-700 text-sm">{localError}</p>
+              <p className="text-red-700 text-sm">{localError || speechError}</p>
             </div>
           )}
 
@@ -236,28 +223,15 @@ const IdeaCapture = () => {
           <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
             {/* Left side actions */}
             <div className="flex items-center gap-3">
-              {/* Voice Input Button */}
-              <button
-                onClick={handleVoiceInput}
+              {/* Voice Input Button — now wired to the speech hesitation hook */}
+              <SpeechMicButton
+                isRecording={isRecording}
+                isAnalysing={isAnalysing}
+                audioLevel={audioLevel}
+                onStart={startRecording}
+                onStop={stopRecording}
                 disabled={isLoading}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all duration-200
-                  ${isRecording 
-                    ? 'bg-red-500 text-white hover:bg-red-600' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                {isRecording ? (
-                  <>
-                    <MicOff size={18} />
-                    <span>Stop</span>
-                  </>
-                ) : (
-                  <>
-                    <Mic size={18} />
-                    <span>Voice</span>
-                  </>
-                )}
-              </button>
+              />
 
               {/* Anonymous Toggle */}
               <button
@@ -316,6 +290,15 @@ const IdeaCapture = () => {
           </div>
         </div>
       </div>
+
+      {/* ── Speech Hesitation Panel ─────────────────────────────────── */}
+      {hesitationDetected && (
+        <SpeechHesitationPanel
+          hesitationResult={hesitationResult}
+          onDismiss={dismissHesitation}
+          onSuggestionClick={handleSuggestionClick}
+        />
+      )}
     </div>
   );
 };

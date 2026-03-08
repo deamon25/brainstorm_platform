@@ -34,6 +34,7 @@ const BrainstormPlatformPage = ({ module }) => {
   const [newSessionName, setNewSessionName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+  const [sessionsError, setSessionsError] = useState(null);
   const [backendStatus, setBackendStatus] = useState('checking');
   const [timer, setTimer] = useState(0);
   
@@ -80,11 +81,18 @@ const BrainstormPlatformPage = ({ module }) => {
 
   const fetchSessions = async () => {
     setIsLoadingSessions(true);
+    setSessionsError(null);
     try {
       const data = await getSessions();
       setSessions(data);
     } catch (error) {
       console.error('Error fetching sessions:', error);
+      const detail = error.response?.data?.detail;
+      if (error.response?.status === 503) {
+        setSessionsError('Database is currently unavailable. You can still use AI features — start a new session to continue brainstorming.');
+      } else {
+        setSessionsError(detail || 'Could not load sessions. Please try again.');
+      }
     } finally {
       setIsLoadingSessions(false);
     }
@@ -275,6 +283,7 @@ const BrainstormPlatformPage = ({ module }) => {
           <SessionModal
             sessions={sessions}
             isLoading={isLoadingSessions}
+            sessionsError={sessionsError}
             newSessionName={newSessionName}
             setNewSessionName={setNewSessionName}
             onClose={() => setShowSessionModal(false)}
@@ -358,6 +367,7 @@ const BrainstormPlatformPage = ({ module }) => {
 const SessionModal = ({
   sessions,
   isLoading,
+  sessionsError,
   newSessionName,
   setNewSessionName,
   onClose,
@@ -446,6 +456,11 @@ const SessionModal = ({
             </div>
           ) : (
             <div className="space-y-3">
+              {sessionsError && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
+                  {sessionsError}
+                </div>
+              )}
               {isLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="animate-spin text-blue-500" size={32} />

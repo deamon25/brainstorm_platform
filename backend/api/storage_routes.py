@@ -16,10 +16,20 @@ from core.schemas import (
 )
 from core.crud_ideas import idea_crud
 from core.crud_sessions import session_crud
+from core.database import database
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def _require_db():
+    """Raise 503 if MongoDB is not connected instead of letting routes crash."""
+    if not database.is_connected():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database is not available. Please try again later.",
+        )
 
 
 # ============= Ideas Endpoints =============
@@ -51,6 +61,7 @@ async def create_idea(request: CreateIdeaRequest):
     }
     ```
     """
+    _require_db()
     try:
         # Create idea
         idea = await idea_crud.create_idea(request.model_dump(exclude_none=True))
@@ -76,6 +87,7 @@ async def create_idea(request: CreateIdeaRequest):
 @router.get("/ideas/{idea_id}", response_model=IdeaResponse)
 async def get_idea(idea_id: str):
     """Get a specific idea by ID"""
+    _require_db()
     try:
         idea = await idea_crud.get_idea(idea_id)
         if not idea:
@@ -104,7 +116,7 @@ async def get_idea(idea_id: str):
 async def get_ideas(
     session_id: Optional[str] = Query(None, description="Filter by session ID"),
     participant_id: Optional[str] = Query(None, description="Filter by participant ID"),
-    status: Optional[str] = Query(None, description="Filter by status"),
+    status_filter: Optional[str] = Query(None, alias="status", description="Filter by status"),
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=500, description="Maximum records to return")
 ):
@@ -117,11 +129,12 @@ async def get_ideas(
     - `status`: Filter by status (draft, approved, rejected)
     - `skip` and `limit`: For pagination
     """
+    _require_db()
     try:
         ideas, total = await idea_crud.get_ideas(
             session_id=session_id,
             participant_id=participant_id,
-            status=status,
+            status=status_filter,
             skip=skip,
             limit=limit
         )
@@ -159,6 +172,7 @@ async def update_idea(idea_id: str, request: UpdateIdeaRequest):
     - Cluster assignment
     - Tags
     """
+    _require_db()
     try:
         # Update idea
         idea = await idea_crud.update_idea(
@@ -192,6 +206,7 @@ async def update_idea(idea_id: str, request: UpdateIdeaRequest):
 @router.delete("/ideas/{idea_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_idea(idea_id: str):
     """Delete an idea"""
+    _require_db()
     try:
         deleted = await idea_crud.delete_idea(idea_id)
         if not deleted:
@@ -225,6 +240,7 @@ async def create_session(request: CreateSessionRequest):
     }
     ```
     """
+    _require_db()
     try:
         session = await session_crud.create_session(request.model_dump())
         
@@ -248,6 +264,7 @@ async def create_session(request: CreateSessionRequest):
 @router.get("/sessions/{session_id}", response_model=SessionResponse)
 async def get_session(session_id: str):
     """Get a specific session by ID"""
+    _require_db()
     try:
         session = await session_crud.get_session(session_id)
         if not session:
@@ -276,14 +293,15 @@ async def get_session(session_id: str):
 
 @router.get("/sessions", response_model=SessionsListResponse)
 async def get_sessions(
-    status: Optional[str] = Query(None, description="Filter by status"),
+    status_filter: Optional[str] = Query(None, alias="status", description="Filter by status"),
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(50, ge=1, le=200, description="Maximum records to return")
 ):
     """Get list of sessions with optional filters"""
+    _require_db()
     try:
         sessions, total = await session_crud.get_sessions(
-            status=status,
+            status=status_filter,
             skip=skip,
             limit=limit
         )
@@ -314,6 +332,7 @@ async def get_sessions(
 @router.get("/sessions/{session_id}/statistics")
 async def get_session_statistics(session_id: str):
     """Get statistics for a specific session"""
+    _require_db()
     try:
         # Verify session exists
         session = await session_crud.get_session(session_id)

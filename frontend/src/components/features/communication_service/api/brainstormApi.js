@@ -88,6 +88,26 @@ export const detectHesitation = async (typingMetrics) => {
   return response.data;
 };
 
+/**
+ * Send a recorded audio Blob to the speech hesitation backend endpoint.
+ *
+ * @param {Blob}        audioBlob  – audio captured by MediaRecorder
+ * @param {string|null} sessionId  – optional session ID for server-side logging
+ * @returns {Promise<{ prediction: number, label: string, confidence_hesitation: number, confidence_fluent: number }>}
+ */
+export const detectSpeechHesitation = async (audioBlob, sessionId = null) => {
+  const formData = new FormData();
+  // The hook always converts to WAV before calling this function
+  formData.append('audio', audioBlob, 'recording.wav');
+  if (sessionId) formData.append('session_id', sessionId);
+
+  const response = await api.post('/speech-hesitation/predict', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 15000,
+  });
+  return response.data;
+};
+
 export const rephraseText = async (text) => {
   const response = await api.post('/entity-preserving-rephrase', { text });
   return response.data;
