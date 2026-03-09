@@ -6,17 +6,15 @@
  * Recording strategy
  * ──────────────────
  * • Uses the browser's MediaRecorder API to record audio into a Blob.
- * • Each recording "chunk" is collected continuously; when stop() is called the
- *   accumulated Blob is sent to the backend as a WAV/WebM file via FormData.
- * • Periodic auto-submission: every SEGMENT_DURATION_MS the accumulated audio
- *   so far is sent while recording continues, so long utterances get analysed
- *   in rolling windows without forcing the user to stop.
+ * • Audio is collected continuously while the mic is active.
+ * • When stop() is called the full recording is sent to the backend once,
+ *   which runs hesitation detection + Whisper transcription + NER + suggestions.
  *
  * Returned state & controls
  * ─────────────────────────
  *   isRecording       – mic is active
- *   isAnalysing       – HTTP request in-flight
- *   hesitationResult  – last result from the backend  { prediction, label, confidence_hesitation, confidence_fluent }
+ *   isProcessing      – HTTP request in-flight (after stop, before result)
+ *   hesitationResult  – last result from the backend
  *   hesitationDetected – boolean shortcut
  *   error             – string | null
  *   startRecording()  – begin capture
@@ -28,7 +26,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { detectSpeechHesitation } from '../api/brainstormApi';
 
-const SEGMENT_DURATION_MS = 4000; // auto-send every 4 seconds while recording
 const TARGET_SAMPLE_RATE = 16000; // model expects 16 kHz
 
 const SUPPORTED_MIME_TYPES = [
@@ -123,17 +120,85 @@ async function toWAV(blob) {
 
 export default function useSpeechHesitation(sessionId = null) {
   const [isRecording, setIsRecording] = useState(false);
-  const [isAnalysing, setIsAnalysing] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [hesitationResult, setHesitationResult] = useState(null);
+  const [liveTranscript, setLiveTranscript] = useState('');
   const [error, setError] = useState(null);
   const [audioLevel, setAudioLevel] = useState(0);
 
   const mediaRecorderRef = useRef(null);
   const streamRef = useRef(null);
   const chunksRef = useRef([]);
-  const segmentTimerRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const finalTranscriptRef = useRef('');
+  const shouldStopRecognitionRef = useRef(false);
   const analyserRef = useRef(null);
   const animFrameRef = useRef(null);
+
+  // Use a ref to track recording state so that the recognition.onend
+  // handler always sees the latest value (avoids stale closure).
+  const isRecordingRef = useRef(false);
+  useEffect(() => { isRecordingRef.current = isRecording; }, [isRecording]);
+
+  const startLiveTranscription = useCallback(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onresult = (event) => {
+      let interim = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0]?.transcript || '';
+        if (event.results[i].isFinal) {
+          finalTranscriptRef.current = `${finalTranscriptRef.current} ${transcript}`.trim();
+        } else {
+          interim += transcript;
+        }
+      }
+      const combined = `${finalTranscriptRef.current} ${interim}`.trim();
+      setLiveTranscript(combined);
+    };
+
+    recognition.onerror = (event) => {
+      // Non-fatal; audio recording + backend transcription still continue.
+      console.warn('Live speech transcription error:', event.error);
+    };
+
+    recognition.onend = () => {
+      // Read from ref to avoid stale closure over isRecording state.
+      if (isRecordingRef.current && !shouldStopRecognitionRef.current) {
+        try {
+          recognition.start();
+        } catch {
+          // Ignore restart errors from browser speech engine timing.
+        }
+      }
+    };
+
+    recognitionRef.current = recognition;
+    try {
+      recognition.start();
+    } catch {
+      // Ignore start errors (permission/race). Backend transcription still works.
+    }
+  }, []); // No deps — isRecording is read from isRecordingRef
+
+  const stopLiveTranscription = useCallback(() => {
+    shouldStopRecognitionRef.current = true;
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.onend = null;
+        recognitionRef.current.stop();
+      } catch {
+        // ignore
+      }
+      recognitionRef.current = null;
+    }
+  }, []);
 
   // ── Audio level polling ───────────────────────────────────────────
   const startLevelMonitor = useCallback((stream) => {
@@ -172,7 +237,7 @@ export default function useSpeechHesitation(sessionId = null) {
       const rawBlob = new Blob(chunks, { type: mimeType || 'audio/webm' });
       // Skip very short clips (< 1 KB) — they are too small to decode reliably
       if (rawBlob.size < 1024) return;
-      setIsAnalysing(true);
+      setIsProcessing(true);
       try {
         // Convert the browser's native format (WebM/Opus etc.) → WAV so that
         // librosa/soundfile on the backend can decode it without ffmpeg.
@@ -184,7 +249,7 @@ export default function useSpeechHesitation(sessionId = null) {
         console.error('Speech hesitation detection error:', err);
         setError('Could not analyse audio. Please try again.');
       } finally {
-        setIsAnalysing(false);
+        setIsProcessing(false);
       }
     },
     [sessionId],
@@ -194,6 +259,9 @@ export default function useSpeechHesitation(sessionId = null) {
   const startRecording = useCallback(async () => {
     setError(null);
     setHesitationResult(null);
+    setLiveTranscript('');
+    finalTranscriptRef.current = '';
+    shouldStopRecognitionRef.current = false;
 
     if (!navigator.mediaDevices?.getUserMedia) {
       setError('Microphone access is not supported in this browser.');
@@ -216,15 +284,7 @@ export default function useSpeechHesitation(sessionId = null) {
 
       recorder.start(100); // collect chunks every 100 ms
       setIsRecording(true);
-
-      // Rolling segment timer — analyse while recording.
-      // We send ALL accumulated chunks each time (not a slice) because WebM
-      // is a container format: only chunk 0 has the header, so every blob we
-      // build must start from the beginning to be decodable.
-      segmentTimerRef.current = setInterval(() => {
-        const snapshot = [...chunksRef.current];
-        sendChunks(snapshot, mimeType);
-      }, SEGMENT_DURATION_MS);
+      startLiveTranscription();
     } catch (err) {
       if (err.name === 'NotAllowedError') {
         setError('Microphone permission denied. Please allow microphone access and try again.');
@@ -232,12 +292,12 @@ export default function useSpeechHesitation(sessionId = null) {
         setError('Could not start recording: ' + err.message);
       }
     }
-  }, [startLevelMonitor, sendChunks]);
+  }, [startLevelMonitor, sendChunks, startLiveTranscription]);
 
   // ── Stop recording ────────────────────────────────────────────────
   const stopRecording = useCallback(() => {
-    clearInterval(segmentTimerRef.current);
     stopLevelMonitor();
+    stopLiveTranscription();
 
     const recorder = mediaRecorderRef.current;
     if (recorder && recorder.state !== 'inactive') {
@@ -255,7 +315,7 @@ export default function useSpeechHesitation(sessionId = null) {
     mediaRecorderRef.current = null;
 
     setIsRecording(false);
-  }, [stopLevelMonitor, sendChunks]);
+  }, [stopLevelMonitor, stopLiveTranscription, sendChunks]);
 
   // ── Dismiss the hesitation panel ─────────────────────────────────
   const dismissHesitation = useCallback(() => {
@@ -266,20 +326,21 @@ export default function useSpeechHesitation(sessionId = null) {
   // ── Cleanup on unmount ────────────────────────────────────────────
   useEffect(() => {
     return () => {
-      clearInterval(segmentTimerRef.current);
       stopLevelMonitor();
+      stopLiveTranscription();
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
-  }, [stopLevelMonitor]);
+  }, [stopLevelMonitor, stopLiveTranscription]);
 
   const hesitationDetected =
     hesitationResult?.prediction === 1 || hesitationResult?.label === 'hesitation_detected';
 
   return {
     isRecording,
-    isAnalysing,
+    isProcessing,
     hesitationResult,
     hesitationDetected,
+    liveTranscript,
     error,
     audioLevel,
     startRecording,

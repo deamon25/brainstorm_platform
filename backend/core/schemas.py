@@ -95,6 +95,7 @@ class EntityPreservingRephraseResult(BaseModel):
     entities_detected: List[Dict[str, str]] = Field(default=[], description="List of detected entities with text and label")
     entity_map: Dict[str, str] = Field(default={}, description="Mapping of ENTITY_X placeholders to original entity text")
     masked_text: Optional[str] = Field(None, description="The text with entities masked (for debugging)")
+    rephrase_model: Optional[str] = Field(None, description="Model used for rephrasing: gemini or t5")
 
 
 class EntityPreservingRephraseRequest(BaseModel):
@@ -142,6 +143,8 @@ class CreateIdeaRequest(BaseModel):
     typing_metrics: Optional[Dict[str, float]] = Field(None, description="Typing behavior data")
     is_approved: bool = Field(default=False, description="User approved the rephrased version")
     tags: List[str] = Field(default=[], description="Custom tags")
+    ai_suggestions: List[str] = Field(default=[], description="AI-generated idea continuations")
+    guiding_questions: List[str] = Field(default=[], description="AI-generated guiding questions")
     
     class Config:
         json_schema_extra = {
@@ -289,3 +292,110 @@ class SpeechHealthResponse(BaseModel):
     status: str
     model: str
     model_loaded: bool
+
+
+class SpeechTranscribeAndPredictResult(BaseModel):
+    """Combined result of speech hesitation prediction + transcription + entity detection + suggestions"""
+    prediction: int = Field(..., description="0 = fluent, 1 = hesitation detected")
+    label: str = Field(..., description="'fluent' or 'hesitation_detected'")
+    confidence_fluent: float = Field(..., description="Softmax probability for fluent class")
+    confidence_hesitation: float = Field(..., description="Softmax probability for hesitation class")
+    transcript: str = Field(default="", description="Whisper transcription of the audio")
+    rephrased_transcript: str = Field(default="", description="AI-rephrased transcript with entities preserved")
+    rephrase_model: Optional[str] = Field(None, description="Model used for transcript rephrasing")
+    entities: List[Dict[str, str]] = Field(default=[], description="Detected entities [{text, label}]")
+    masked_transcript: str = Field(default="", description="Transcript with entities masked")
+    entity_map: Dict[str, str] = Field(default={}, description="ENTITY_X → original text mapping")
+    suggestions: List[str] = Field(default=[], description="Idea continuation suggestions")
+    idea_continuations: List[str] = Field(default=[], description="Predicted idea continuations")
+    guiding_questions: List[str] = Field(default=[], description="Context-aware guiding questions")
+
+
+# ============= Unified Pipeline Schemas =============
+
+class TypingProcessRequest(BaseModel):
+    """Request for the unified typing processing pipeline"""
+    text: str = Field(..., min_length=1, description="The idea text to process")
+    delFreq: float = Field(default=0, ge=0, description="Number of deletions (backspaces)")
+    leftFreq: float = Field(default=0, ge=0, description="Number of left arrow key presses")
+    TotTime: float = Field(default=1000, gt=0, description="Total typing time in ms")
+    session_id: Optional[str] = Field(None, description="Brainstorming session ID")
+    participant_id: Optional[str] = Field(None, description="Participant identifier")
+
+
+class TypingProcessResponse(BaseModel):
+    """Response from the unified typing processing pipeline"""
+    original_text: str = Field(..., description="The original input text")
+    refined_idea: str = Field(..., description="AI-rephrased version of the idea")
+    entities: List[Dict[str, str]] = Field(default=[], description="Detected entities")
+    entity_map: Dict[str, str] = Field(default={}, description="Entity placeholder mapping")
+    masked_text: Optional[str] = Field(None, description="Text with entities masked")
+    hesitation: Optional[HesitationResult] = Field(None, description="Typing hesitation analysis")
+    suggestions: List[str] = Field(default=[], description="Idea continuation suggestions")
+    idea_continuations: List[str] = Field(default=[], description="Predicted next ideas")
+    guiding_questions: List[str] = Field(default=[], description="Questions to help user continue")
+    rephrase_model: Optional[str] = Field(None, description="Model used for rephrasing")
+
+
+class SpeechProcessResponse(BaseModel):
+    """Response from the unified speech processing pipeline"""
+    transcript: str = Field(default="", description="Whisper transcription")
+    rephrased: str = Field(default="", description="AI-rephrased transcript")
+    entities: List[Dict[str, str]] = Field(default=[], description="Detected entities")
+    entity_map: Dict[str, str] = Field(default={}, description="Entity placeholder mapping")
+    hesitation: bool = Field(default=False, description="Whether hesitation was detected")
+    confidence: float = Field(default=0.0, description="Hesitation confidence score")
+    suggestions: List[str] = Field(default=[], description="Idea continuation suggestions")
+    idea_continuations: List[str] = Field(default=[], description="Predicted next ideas")
+    guiding_questions: List[str] = Field(default=[], description="Questions to help user continue")
+    rephrase_model: Optional[str] = Field(None, description="Model used for rephrasing")
+
+
+# ============= AI Clustering =============
+
+class ClusterIdeasRequest(BaseModel):
+    """Request to cluster ideas for a brainstorming session"""
+    session_id: str = Field(..., description="Brainstorming session ID whose ideas to cluster")
+
+
+class ClusterIdeaItem(BaseModel):
+    """A single idea within a cluster"""
+    id: str
+    text: str
+    original_text: str
+    author: str
+    time: str
+    tags: List[str] = []
+    entities: List[Dict[str, Any]] = []
+    is_hesitant: Optional[bool] = None
+
+
+class ClusterItem(BaseModel):
+    """A single thematic cluster"""
+    id: str
+    name: str
+    icon: str
+    color: Dict[str, str]
+    summary: str
+    ideas: List[ClusterIdeaItem]
+
+
+class ClusterInsight(BaseModel):
+    """A single AI insight about the session"""
+    icon: str
+    text: str
+
+
+class ClusterSummary(BaseModel):
+    """AI-generated session summary"""
+    overview: str
+    insights: List[ClusterInsight] = []
+    recommendations: List[str] = []
+
+
+class ClusterIdeasResponse(BaseModel):
+    """Response from AI clustering endpoint"""
+    clusters: List[ClusterItem]
+    summary: ClusterSummary
+    total_ideas: int
+    total_clusters: int

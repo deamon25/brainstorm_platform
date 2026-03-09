@@ -25,6 +25,7 @@ class ModelManager:
         self.hesitation_model = None
         self.scaler = None
         self.speech_hesitation_model = None
+        self.whisper_model = None
         
     def load_all_models(self):
         """Load all models at startup"""
@@ -34,8 +35,12 @@ class ModelManager:
             # Load spaCy NER model
             self.load_ner_model()
             
-            # Load T5 Rephraser model
-            self.load_rephraser_model()
+            # Load T5 Rephraser model (optional — Gemini API can be used instead)
+            try:
+                self.load_rephraser_model()
+            except Exception as e:
+                logger.warning(f"Rephraser T5 model failed to load (will try Gemini API as fallback): {e}")
+                logger.warning("If GEMINI_API_KEY is set, rephrasing will use Gemini instead.")
             
             # Try to load Hesitation model (optional)
             try:
@@ -50,6 +55,13 @@ class ModelManager:
             except Exception as e:
                 logger.warning(f"Speech hesitation model failed to load (will continue without it): {e}")
                 logger.warning("Speech hesitation detection endpoint will not be available")
+
+            # Try to load Whisper model (optional)
+            try:
+                self.load_whisper_model()
+            except Exception as e:
+                logger.warning(f"Whisper model failed to load (will continue without transcription): {e}")
+                logger.warning("Speech transcription will not be available")
 
             logger.info("Model loading completed!")
             
@@ -81,8 +93,12 @@ class ModelManager:
             )
             logger.info("Rephraser model loaded successfully")
         except Exception as e:
-            logger.error(f"Failed to load rephraser model: {e}")
-            raise
+            logger.warning(
+                f"T5 rephraser model could not be loaded: {e}. "
+                "Groq API will be used if GROQ_API_KEY is set in .env."
+            )
+            self.rephraser_model = None
+            self.rephraser_tokenizer = None
     
     def load_hesitation_model(self):
         """Load hesitation detection model (scikit-learn)"""
@@ -114,6 +130,17 @@ class ModelManager:
             logger.error(f"Failed to load speech hesitation model: {e}")
             raise
 
+    def load_whisper_model(self):
+        """Load faster-whisper model for speech transcription"""
+        try:
+            from faster_whisper import WhisperModel
+            logger.info("Loading Whisper model (base, int8)...")
+            self.whisper_model = WhisperModel("base", compute_type="int8", device="cpu")
+            logger.info("Whisper model loaded successfully")
+        except Exception as e:
+            logger.error(f"Failed to load Whisper model: {e}")
+            raise
+
     def get_models_status(self) -> dict:
         """Check which models are loaded"""
         return {
@@ -121,6 +148,7 @@ class ModelManager:
             "rephraser_model": self.rephraser_model is not None,
             "hesitation_model": self.hesitation_model is not None,
             "speech_hesitation_model": self.speech_hesitation_model is not None,
+            "whisper_model": self.whisper_model is not None,
         }
 
 

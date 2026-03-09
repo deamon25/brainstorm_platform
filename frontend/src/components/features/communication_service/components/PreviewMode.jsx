@@ -60,8 +60,9 @@ const PreviewMode = () => {
     );
   }
 
-  const displayRephrasedText = localRephrasedText || previewData.rephrased_text;
+  const displayRephrasedText = localRephrasedText || previewData.rephrased_text || draftIdea.original_text;
   const hesitationInfo = previewData.hesitation;
+  const rephraseModel = previewData.rephrase_model;
 
   const handleAccept = async () => {
     console.log('Accept clicked - currentSession:', currentSession);
@@ -205,6 +206,11 @@ const PreviewMode = () => {
                 ) : (
                   <p className="text-gray-800 leading-relaxed">{displayRephrasedText}</p>
                 )}
+                {rephraseModel && !isEditing && (
+                  <span className="absolute top-3 right-3 text-[11px] px-2 py-0.5 rounded-full bg-white text-purple-700 border border-purple-200">
+                    {rephraseModel}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -275,7 +281,7 @@ const PreviewMode = () => {
               </div>
               {previewData.masked_text && (
                 <div className="pt-3 border-t border-gray-200">
-                  <span className="text-gray-500">Masked Text:</span>
+                  <span className="text-gray-500">Entity-restored Text:</span>
                   <p className="mt-1 font-mono text-xs text-gray-600 bg-white p-2 rounded">
                     {previewData.masked_text}
                   </p>

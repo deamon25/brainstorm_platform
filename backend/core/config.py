@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     SCALER_PATH: Optional[Path] = None
     SPEECH_HESITATION_MODEL_PATH: Optional[Path] = None
 
+    # Groq API — free tier rephrasing
+    # Get your free key at: https://console.groq.com
+    GROQ_API_KEY: Optional[str] = None
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+
     @model_validator(mode="after")
     def derive_model_paths(self) -> "Settings":
         base = self.MODELS_DIR
@@ -57,6 +62,10 @@ class Settings(BaseSettings):
         if self.SPEECH_HESITATION_MODEL_PATH is None:
             self.SPEECH_HESITATION_MODEL_PATH = base / "hesitation_speech_model" / "speech_hesitation_model.pth"
         return self
+
+    # Gemini API (used for rephrasing and idea suggestions)
+    GEMINI_API_KEY: Optional[str] = None
+    GEMINI_MODEL: str = "gemini-2.0-flash"
 
     # Server
     HOST: str = "0.0.0.0"

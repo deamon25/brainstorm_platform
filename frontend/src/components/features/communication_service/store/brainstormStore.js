@@ -20,6 +20,19 @@ const useBrainstormStore = create((set, get) => ({
   draftIdea: null,
   previewData: null,
   
+  // AI Assistant state
+  aiAssistant: {
+    isVisible: false,
+    isProcessing: false,
+    refinedIdea: '',
+    entities: [],
+    suggestions: [],
+    ideaContinuations: [],
+    guidingQuestions: [],
+    hesitation: null,
+    rephraseModel: null,
+  },
+  
   // Typing metrics for hesitation detection
   typingMetrics: {
     delFreq: 0,
@@ -53,6 +66,30 @@ const useBrainstormStore = create((set, get) => ({
   
   setDraftIdea: (draft) => set({ draftIdea: draft }),
   setPreviewData: (data) => set({ previewData: data }),
+  
+  // AI Assistant actions
+  setAiAssistant: (data) => set((state) => ({
+    aiAssistant: { ...state.aiAssistant, ...data },
+  })),
+  showAiAssistant: () => set((state) => ({
+    aiAssistant: { ...state.aiAssistant, isVisible: true },
+  })),
+  hideAiAssistant: () => set((state) => ({
+    aiAssistant: { ...state.aiAssistant, isVisible: false },
+  })),
+  resetAiAssistant: () => set({
+    aiAssistant: {
+      isVisible: false,
+      isProcessing: false,
+      refinedIdea: '',
+      entities: [],
+      suggestions: [],
+      ideaContinuations: [],
+      guidingQuestions: [],
+      hesitation: null,
+      rephraseModel: null,
+    },
+  }),
   
   // Typing metrics actions
   resetTypingMetrics: () => set({
@@ -94,12 +131,35 @@ const useBrainstormStore = create((set, get) => ({
       leftFreq: state.typingMetrics.leftFreq,
       TotTime: state.typingMetrics.startTime
         ? Date.now() - state.typingMetrics.startTime
-        : 1000, // Default 1 second if not started
+        : 1000,
     };
   },
   
   setIsAnonymous: (anonymous) => set({ isAnonymous: anonymous }),
   setParticipantId: (id) => set({ participantId: id }),
+
+  // AI Clustering state
+  clustering: {
+    clusters: [],
+    summary: null,
+    totalIdeas: 0,
+    totalClusters: 0,
+    isLoading: false,
+    error: null,
+  },
+  setClustering: (data) => set((state) => ({
+    clustering: { ...state.clustering, ...data },
+  })),
+  resetClustering: () => set({
+    clustering: {
+      clusters: [],
+      summary: null,
+      totalIdeas: 0,
+      totalClusters: 0,
+      isLoading: false,
+      error: null,
+    },
+  }),
   
   // Reset all state
   resetStore: () => set({
@@ -110,6 +170,17 @@ const useBrainstormStore = create((set, get) => ({
     error: null,
     draftIdea: null,
     previewData: null,
+    aiAssistant: {
+      isVisible: false,
+      isProcessing: false,
+      refinedIdea: '',
+      entities: [],
+      suggestions: [],
+      ideaContinuations: [],
+      guidingQuestions: [],
+      hesitation: null,
+      rephraseModel: null,
+    },
     typingMetrics: {
       delFreq: 0,
       leftFreq: 0,

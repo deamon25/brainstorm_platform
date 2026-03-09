@@ -2,35 +2,33 @@
  * SpeechMicButton
  *
  * Compact microphone button with:
- *  - Idle / Recording / Analysing states
+ *  - Idle / Recording states
  *  - Live audio-level waveform bars (animated while recording)
  *  - Smooth pulse ring animation when the mic is active
  *
  * Props
  * ─────
  *  isRecording  {boolean}
- *  isAnalysing  {boolean}
  *  audioLevel   {number}  0-100
  *  onStart      {() => void}
  *  onStop       {() => void}
  *  disabled     {boolean}
  */
 import React from 'react';
-import { Mic, MicOff, Loader2 } from 'lucide-react';
+import { Mic, MicOff } from 'lucide-react';
 
 // Number of waveform bars displayed next to the button while recording
 const BAR_COUNT = 5;
 
 export default function SpeechMicButton({
   isRecording = false,
-  isAnalysing = false,
   audioLevel = 0,
   onStart,
   onStop,
   disabled = false,
 }) {
   const handleClick = () => {
-    if (disabled || isAnalysing) return;
+    if (disabled) return;
     isRecording ? onStop() : onStart();
   };
 
@@ -55,25 +53,18 @@ export default function SpeechMicButton({
         <button
           type="button"
           onClick={handleClick}
-          disabled={disabled || isAnalysing}
+          disabled={disabled}
           aria-label={isRecording ? 'Stop recording' : 'Start voice recording'}
           className={[
             'relative flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium',
             'transition-all duration-200 select-none',
             isRecording
               ? 'bg-red-500 text-white hover:bg-red-600 shadow-md shadow-red-200'
-              : isAnalysing
-              ? 'bg-blue-100 text-blue-600 cursor-not-allowed'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
-            (disabled || isAnalysing) ? 'opacity-60 cursor-not-allowed' : '',
+            disabled ? 'opacity-60 cursor-not-allowed' : '',
           ].join(' ')}
         >
-          {isAnalysing ? (
-            <>
-              <Loader2 size={18} className="animate-spin" />
-              <span className="text-sm">Analysing…</span>
-            </>
-          ) : isRecording ? (
+          {isRecording ? (
             <>
               <MicOff size={18} />
               <span className="text-sm">Stop</span>

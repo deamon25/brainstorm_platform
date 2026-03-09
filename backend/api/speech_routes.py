@@ -12,6 +12,7 @@ from core.schemas import (
     SpeechHesitationBatchResponse,
     SpeechHesitationBatchItemResult,
     SpeechHealthResponse,
+    SpeechTranscribeAndPredictResult,
 )
 from inference.speech_hesitation_detector import speech_hesitation_detector
 from inference.model_loader import model_manager
@@ -116,6 +117,161 @@ async def predict_speech_hesitation(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Speech hesitation prediction failed. Please try again later.",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Combined: Transcribe + Predict + Entity Detection + Suggestions
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/speech-hesitation/transcribe-and-predict",
+    response_model=SpeechTranscribeAndPredictResult,
+    summary="Speech Hesitation — transcribe, predict, extract entities, and suggest",
+    description=(
+        "Upload an audio file. The endpoint runs speech hesitation detection, "
+        "Whisper transcription, spaCy entity extraction on the transcript, "
+        "and (if hesitation is detected) generates idea continuation suggestions."
+    ),
+)
+async def transcribe_and_predict(
+    audio: UploadFile = File(..., description="Audio file (.wav, .mp3, .ogg, .flac)"),
+):
+    """
+    Combined pipeline: hesitation detection + transcription + rephrasing + NER + suggestions.
+
+    **Returns:**
+    - `prediction`, `label`, `confidence_fluent`, `confidence_hesitation` — hesitation result
+    - `transcript` — Whisper transcription of the audio
+    - `rephrased_transcript` — AI-rephrased transcript with entities preserved
+    - `rephrase_model` — model used for transcript rephrasing (`gemini` or `t5`)
+    - `entities` — named entities detected in the transcript
+    - `masked_transcript` — transcript with entities replaced by ENTITY_X tokens
+    - `entity_map` — mapping of ENTITY_X tokens to original text
+    - `suggestions` — idea continuations (only when hesitation detected)
+    """
+    if model_manager.speech_hesitation_model is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Speech hesitation model is not loaded",
+        )
+
+    try:
+        audio_bytes = await audio.read()
+        if not audio_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Uploaded audio file is empty",
+            )
+        if len(audio_bytes) > _MAX_AUDIO_SIZE_BYTES:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail="Audio file exceeds the 10 MB size limit",
+            )
+
+        # 1. Hesitation detection (always runs)
+        hesitation_result = speech_hesitation_detector.predict_from_bytes(audio_bytes)
+        logger.info(
+            f"Hesitation: {hesitation_result.label} "
+            f"(confidence: {hesitation_result.confidence_hesitation:.4f})"
+        )
+
+        # 2. Whisper transcription
+        transcript = ""
+        if model_manager.whisper_model is not None:
+            try:
+                from inference.transcriber import speech_transcriber
+                transcript = speech_transcriber.transcribe(audio_bytes)
+            except Exception as e:
+                logger.warning(f"Transcription failed (continuing without it): {e}")
+        else:
+            logger.warning("Whisper model not loaded — skipping transcription")
+
+        # 3. Rephrase transcript + entity outputs
+        entities = []
+        rephrased_transcript = ""
+        rephrase_model = None
+        masked_transcript = ""
+        entity_map = {}
+        if transcript:
+            try:
+                from inference.rephraser import text_rephraser
+
+                rephrase_result = text_rephraser.rephrase_with_entity_preservation(transcript)
+                rephrased_transcript = rephrase_result.rephrased_text
+                rephrase_model = rephrase_result.rephrase_model
+                entities = rephrase_result.entities_detected
+                masked_transcript = rephrase_result.masked_text or ""
+                entity_map = rephrase_result.entity_map or {}
+            except Exception as e:
+                logger.warning(f"Transcript rephrasing failed (continuing with raw transcript): {e}")
+
+        # Fallback entity extraction if rephrasing path did not populate entities.
+        if transcript and not entities and model_manager.ner_model is not None:
+            try:
+                from inference.rephraser import mask_entities
+
+                doc = model_manager.ner_model(transcript)
+                entities = [{"text": ent.text, "label": ent.label_} for ent in doc.ents]
+                masked_transcript, entity_map = mask_entities(transcript, doc)
+            except Exception as e:
+                logger.warning(f"Fallback entity extraction on transcript failed: {e}")
+
+        # 4. Idea suggestions (only when hesitation detected)
+        suggestions = []
+        idea_continuations = []
+        guiding_questions = []
+        suggestion_seed_text = rephrased_transcript or transcript
+        if suggestion_seed_text:
+            # Always generate idea continuations and guiding questions
+            try:
+                from inference.idea_predictor import idea_predictor
+                idea_continuations = idea_predictor.predict_continuations(
+                    suggestion_seed_text, entities=[{"text": e["text"], "label": e["label"]} for e in entities] if entities else None
+                )
+            except Exception as e:
+                logger.warning(f"Idea prediction failed: {e}")
+
+            try:
+                from inference.guiding_questions import guiding_question_generator
+                guiding_questions = guiding_question_generator.generate_questions(
+                    suggestion_seed_text,
+                    entities=[{"text": e["text"], "label": e["label"]} for e in entities] if entities else None,
+                    hesitation_detected=(hesitation_result.prediction == 1),
+                )
+            except Exception as e:
+                logger.warning(f"Guiding question generation failed: {e}")
+
+            if hesitation_result.prediction == 1:
+                try:
+                    from inference.idea_suggester import idea_suggester
+                    suggestions = idea_suggester.generate_suggestions(suggestion_seed_text)
+                except Exception as e:
+                    logger.warning(f"Idea suggestion generation failed: {e}")
+
+        return SpeechTranscribeAndPredictResult(
+            prediction=hesitation_result.prediction,
+            label=hesitation_result.label,
+            confidence_fluent=hesitation_result.confidence_fluent,
+            confidence_hesitation=hesitation_result.confidence_hesitation,
+            transcript=transcript,
+            rephrased_transcript=rephrased_transcript,
+            rephrase_model=rephrase_model,
+            entities=entities,
+            masked_transcript=masked_transcript,
+            entity_map=entity_map,
+            suggestions=suggestions,
+            idea_continuations=idea_continuations,
+            guiding_questions=guiding_questions,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Transcribe-and-predict failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Transcribe-and-predict pipeline failed. Please try again later.",
         )
 
 

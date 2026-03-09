@@ -59,6 +59,10 @@ class IdeaModel(BaseModel):
     cluster_id: Optional[str] = Field(None, description="Cluster assignment for analytics")
     tags: List[str] = Field(default=[], description="Tags for categorization")
     
+    # AI Suggestions (stored for history tracking)
+    ai_suggestions: List[str] = Field(default=[], description="AI-generated idea continuations")
+    guiding_questions: List[str] = Field(default=[], description="AI-generated guiding questions")
+    
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

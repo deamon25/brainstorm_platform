@@ -12,7 +12,9 @@ from core.schemas import (
     IdeasListResponse,
     CreateSessionRequest,
     SessionResponse,
-    SessionsListResponse
+    SessionsListResponse,
+    ClusterIdeasRequest,
+    ClusterIdeasResponse,
 )
 from core.crud_ideas import idea_crud
 from core.crud_sessions import session_crud
@@ -357,4 +359,60 @@ async def get_session_statistics(session_id: str):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve session statistics. Please try again later."
+        )
+
+
+# ============= AI Clustering Endpoint =============
+
+@router.post("/cluster-ideas", response_model=ClusterIdeasResponse)
+async def cluster_ideas(request: ClusterIdeasRequest):
+    """
+    Cluster all ideas in a brainstorming session using AI.
+
+    Fetches every idea for the given session, sends them to the Groq LLM
+    for thematic clustering, and returns structured clusters with an
+    AI-generated summary, insights, and recommendations.
+    """
+    _require_db()
+    try:
+        # 1. Fetch all ideas for the session
+        ideas, total = await idea_crud.get_ideas(
+            session_id=request.session_id, skip=0, limit=500
+        )
+
+        if not ideas:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No ideas found for this session. Add some ideas first.",
+            )
+
+        # 2. Convert to plain dicts for the clusterer
+        idea_dicts = []
+        for idea in ideas:
+            d = idea.model_dump(by_alias=True)
+            d["_id"] = str(d["_id"])
+            if hasattr(d.get("created_at"), "isoformat"):
+                d["created_at"] = d["created_at"].isoformat()
+            idea_dicts.append(d)
+
+        # 3. Run AI clustering
+        from inference.idea_clusterer import idea_clusterer
+        result = idea_clusterer.cluster_ideas(idea_dicts)
+
+        total_ideas = sum(len(c.get("ideas", [])) for c in result.get("clusters", []))
+
+        return ClusterIdeasResponse(
+            clusters=result["clusters"],
+            summary=result["summary"],
+            total_ideas=total_ideas,
+            total_clusters=len(result["clusters"]),
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Idea clustering failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="AI clustering failed. Please try again later.",
         )

@@ -17,7 +17,9 @@ from core.schemas import (
     RephraseResult,
     EntityPreservingRephraseResult,
     ComprehensiveAnalysisResponse,
-    HealthResponse
+    HealthResponse,
+    TypingProcessRequest,
+    TypingProcessResponse,
 )
 from inference.entity_extraction import entity_extractor
 from inference.rephraser import text_rephraser
@@ -272,3 +274,112 @@ def _generate_recommendations(hesitation: HesitationResult, entities: List) -> L
         recommendations.append("Great communication! Clear and confident")
     
     return recommendations
+
+
+# ---------------------------------------------------------------------------
+# Unified Typing Pipeline
+# ---------------------------------------------------------------------------
+
+@router.post("/typing-process", response_model=TypingProcessResponse)
+async def typing_process(request: TypingProcessRequest):
+    """
+    Unified typing processing pipeline.
+
+    Runs the full AI pipeline on typed text:
+    1. Entity detection (spaCy NER)
+    2. Hesitation detection (Isolation Forest on typing metrics)
+    3. Entity-preserving rephrasing (Groq / T5)
+    4. Idea continuation prediction (Groq)
+    5. Guiding question generation (Groq, context-aware)
+
+    This is the recommended endpoint for the typing workflow.
+    """
+    try:
+        # 1. Entity-preserving rephrase (includes entity detection + masking)
+        rephrase_result = None
+        entities = []
+        entity_map = {}
+        masked_text = None
+        refined_idea = request.text
+        rephrase_model = None
+
+        try:
+            rephrase_result = text_rephraser.rephrase_with_entity_preservation(request.text)
+            refined_idea = rephrase_result.rephrased_text
+            entities = rephrase_result.entities_detected
+            entity_map = rephrase_result.entity_map
+            masked_text = rephrase_result.masked_text
+            rephrase_model = rephrase_result.rephrase_model
+        except Exception as e:
+            logger.warning(f"Rephrasing failed in typing pipeline: {e}")
+
+        # Fallback entity extraction if rephrase didn't produce entities
+        if not entities:
+            try:
+                raw_entities = entity_extractor.extract_entities(request.text)
+                entities = [{"text": e.text, "label": e.label} for e in raw_entities]
+            except Exception as e:
+                logger.warning(f"Fallback entity extraction failed: {e}")
+
+        # 2. Typing hesitation detection
+        hesitation = None
+        try:
+            hesitation = hesitation_detector.detect_hesitation(
+                delFreq=request.delFreq,
+                leftFreq=request.leftFreq,
+                TotTime=request.TotTime,
+            )
+        except Exception as e:
+            logger.warning(f"Hesitation detection failed in typing pipeline: {e}")
+
+        is_hesitant = hesitation.is_hesitant if hesitation else False
+
+        # 3. Idea continuation predictions
+        idea_continuations = []
+        try:
+            from inference.idea_predictor import idea_predictor
+            idea_continuations = idea_predictor.predict_continuations(
+                request.text, entities=entities
+            )
+        except Exception as e:
+            logger.warning(f"Idea prediction failed: {e}")
+
+        # 4. Guiding questions (always generate, but prioritise when hesitant)
+        guiding_questions = []
+        try:
+            from inference.guiding_questions import guiding_question_generator
+            guiding_questions = guiding_question_generator.generate_questions(
+                request.text,
+                entities=entities,
+                hesitation_detected=is_hesitant,
+            )
+        except Exception as e:
+            logger.warning(f"Guiding question generation failed: {e}")
+
+        # 5. Idea continuation suggestions (short one-liners)
+        suggestions = []
+        try:
+            from inference.idea_suggester import idea_suggester
+            suggestions = idea_suggester.generate_suggestions(request.text)
+        except Exception as e:
+            logger.warning(f"Idea suggestions failed: {e}")
+
+        return TypingProcessResponse(
+            original_text=request.text,
+            refined_idea=refined_idea,
+            entities=entities,
+            entity_map=entity_map,
+            masked_text=masked_text,
+            hesitation=hesitation,
+            suggestions=suggestions,
+            idea_continuations=idea_continuations,
+            guiding_questions=guiding_questions,
+            rephrase_model=rephrase_model,
+        )
+
+    except Exception as e:
+        logger.error(f"Typing process pipeline failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Typing process pipeline failed. Please try again later.",
+        )

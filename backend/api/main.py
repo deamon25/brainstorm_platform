@@ -1,8 +1,9 @@
 """
 FastAPI application for Brainstorm Platform Service
 """
+import asyncio
 import logging
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,6 +23,24 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+DB_RETRY_INTERVAL_SECONDS = 10
+
+
+async def _retry_db_connection_loop():
+    """Retry MongoDB connection in the background until it succeeds."""
+    while not database.is_connected():
+        try:
+            await database.connect_db()
+            logger.info("MongoDB reconnected successfully in background")
+            return
+        except Exception as e:
+            logger.warning(
+                f"Background MongoDB reconnect failed: {e}. "
+                f"Retrying in {DB_RETRY_INTERVAL_SECONDS}s..."
+            )
+            await asyncio.sleep(DB_RETRY_INTERVAL_SECONDS)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
@@ -29,6 +48,7 @@ async def lifespan(app: FastAPI):
     """
     # Startup: Connect to database and load models
     logger.info("Starting Brainstorm Platform Service...")
+    db_retry_task = None
     
     try:
         # Connect to MongoDB
@@ -37,6 +57,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Failed to connect to MongoDB: {e}")
         logger.warning("Continuing without database (AI features will still work)")
+        db_retry_task = asyncio.create_task(_retry_db_connection_loop())
     
     try:
         # Load ML models
@@ -50,6 +71,10 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     logger.info("Shutting down Brainstorm Platform Service...")
+    if db_retry_task and not db_retry_task.done():
+        db_retry_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await db_retry_task
     await database.close_db()
 
 
