@@ -78,6 +78,9 @@ python -m venv venv
 # 3. Install dependencies
 pip install -r requirements.txt
 
+# 3b. Reproduce exact working environment (pinned)
+pip install -r requirements.lock.txt
+
 # 4. Download spaCy language model
 python -m spacy download en_core_web_sm
 
