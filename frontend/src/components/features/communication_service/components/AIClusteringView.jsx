@@ -24,6 +24,7 @@ import {
   AlertCircle,
   RefreshCw,
   Shield,
+  BarChart3,
 } from 'lucide-react';
 import useBrainstormStore from '../store/brainstormStore';
 import { clusterIdeas } from '../api/brainstormApi';
@@ -39,6 +40,9 @@ const ICON_MAP = {
   Layers,
   Shield,
 };
+
+// Colors for cluster dots
+const CLUSTER_COLORS = ['#185FA5', '#1D9E75', '#7F77DD', '#D85A30', '#B5539F', '#2B8A82'];
 
 const AIClusteringView = () => {
   const [expandedClusters, setExpandedClusters] = useState({});
@@ -131,22 +135,22 @@ const AIClusteringView = () => {
   if (isLoading) {
     return (
       <div className="max-w-5xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-12 text-center">
+        <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm p-16 text-center">
           <div className="flex flex-col items-center gap-4">
             <div className="relative">
-              <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center">
-                <Brain className="text-purple-500 animate-pulse" size={40} />
+              <div className="w-16 h-16 bg-brand-navy-light rounded-2xl flex items-center justify-center">
+                <Brain className="text-brand-navy-mid animate-pulse" size={32} />
               </div>
-              <Sparkles className="absolute -top-2 -right-2 text-purple-400 animate-bounce" size={24} />
+              <Sparkles className="absolute -top-2 -right-2 text-brand-navy-mid animate-bounce" size={18} />
             </div>
             <div>
-              <h3 className="text-xl font-semibold text-gray-800">AI is Analyzing Ideas...</h3>
-              <p className="text-gray-500 mt-2">Clustering by themes and generating insights</p>
+              <h3 className="text-lg font-semibold text-gray-800">Analyzing Ideas...</h3>
+              <p className="text-sm text-gray-400 mt-1">Clustering by themes and generating insights</p>
             </div>
-            <div className="flex gap-2 mt-4">
-              <div className="w-3 h-3 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-              <div className="w-3 h-3 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-              <div className="w-3 h-3 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            <div className="flex gap-1.5 mt-2">
+              <div className="w-2 h-2 bg-brand-navy-mid/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <div className="w-2 h-2 bg-brand-navy-mid/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <div className="w-2 h-2 bg-brand-navy-mid/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
             </div>
           </div>
         </div>
@@ -158,28 +162,28 @@ const AIClusteringView = () => {
   if (error) {
     return (
       <div className="max-w-5xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-lg border border-red-100 p-12 text-center">
+        <div className="bg-white rounded-2xl border border-red-100 shadow-sm p-16 text-center">
           <div className="flex flex-col items-center gap-4">
-            <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center">
-              <AlertCircle className="text-red-500" size={36} />
+            <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center">
+              <AlertCircle className="text-red-400" size={28} />
             </div>
             <div>
-              <h3 className="text-xl font-semibold text-gray-800">Clustering Failed</h3>
-              <p className="text-gray-500 mt-2 max-w-md">{error}</p>
+              <h3 className="text-lg font-semibold text-gray-800">Clustering Failed</h3>
+              <p className="text-sm text-gray-400 mt-1 max-w-md">{error}</p>
             </div>
-            <div className="flex gap-3 mt-2">
+            <div className="flex gap-2.5 mt-2">
               <button
                 onClick={() => setCurrentScreen('board')}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors text-gray-700 font-medium"
+                className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors text-gray-600 text-xs font-medium"
               >
-                <ArrowLeft size={18} />
+                <ArrowLeft size={14} />
                 Back to Board
               </button>
               <button
                 onClick={fetchClusters}
-                className="flex items-center gap-2 px-4 py-2 bg-purple-600 rounded-xl hover:bg-purple-700 transition-colors text-white font-medium"
+                className="flex items-center gap-1.5 px-4 py-2 bg-brand-navy rounded-xl hover:bg-brand-navy-mid transition-colors text-white text-xs font-medium"
               >
-                <RefreshCw size={18} />
+                <RefreshCw size={14} />
                 Retry
               </button>
             </div>
@@ -193,18 +197,18 @@ const AIClusteringView = () => {
   if (!clusters.length) {
     return (
       <div className="max-w-5xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-12 text-center">
+        <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm p-16 text-center">
           <div className="flex flex-col items-center gap-4">
-            <div className="w-16 h-16 bg-purple-50 rounded-2xl flex items-center justify-center">
-              <Layers className="text-purple-400" size={36} />
+            <div className="w-14 h-14 bg-purple-50 rounded-2xl flex items-center justify-center">
+              <Layers className="text-purple-400" size={28} />
             </div>
-            <h3 className="text-xl font-semibold text-gray-800">No Clusters Yet</h3>
-            <p className="text-gray-500">Add ideas to your brainstorming session and try again.</p>
+            <h3 className="text-lg font-semibold text-gray-800">No Clusters Yet</h3>
+            <p className="text-sm text-gray-400">Add ideas to your brainstorming session and try again.</p>
             <button
               onClick={() => setCurrentScreen('board')}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 rounded-xl hover:bg-purple-700 transition-colors text-white font-medium mt-2"
+              className="flex items-center gap-1.5 px-4 py-2 bg-brand-navy rounded-xl hover:bg-brand-navy-mid transition-colors text-white text-xs font-medium mt-2"
             >
-              <ArrowLeft size={18} />
+              <ArrowLeft size={14} />
               Back to Board
             </button>
           </div>
@@ -215,134 +219,102 @@ const AIClusteringView = () => {
 
   // ---- Main view ----
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-5 animate-fade-in">
       {/* Header */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-        <div className="bg-gradient-to-r from-violet-600 to-purple-600 px-6 py-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-white/20 rounded-xl">
-                <Brain className="text-white" size={24} />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold text-white">AI Clustering & Insights</h2>
-                <p className="text-purple-100 text-sm mt-0.5">
-                  {totalIdeas} idea{totalIdeas !== 1 ? 's' : ''} organized into {totalClusters} theme
-                  {totalClusters !== 1 ? 's' : ''}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={fetchClusters}
-                className="flex items-center gap-2 px-3 py-2 bg-white/20 rounded-xl hover:bg-white/30 transition-colors text-white font-medium"
-                title="Re-cluster ideas"
-              >
-                <RefreshCw size={18} />
-              </button>
-              <button
-                onClick={() => setCurrentScreen('board')}
-                className="flex items-center gap-2 px-4 py-2 bg-white/20 rounded-xl hover:bg-white/30 transition-colors text-white font-medium"
-              >
-                <ArrowLeft size={18} />
-                <span>Back to Board</span>
-              </button>
-            </div>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-purple-50 rounded-xl">
+            <BarChart3 className="text-purple-500" size={18} />
           </div>
+          <div>
+            <h2 className="text-sm font-semibold text-gray-800">AI Clustering & Insights</h2>
+            <p className="text-xs text-gray-400">
+              {totalIdeas} idea{totalIdeas !== 1 ? 's' : ''} organized into {totalClusters} theme{totalClusters !== 1 ? 's' : ''}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={fetchClusters}
+            className="p-2 text-gray-400 hover:text-purple-500 hover:bg-purple-50 rounded-lg transition-all"
+            title="Re-cluster"
+          >
+            <RefreshCw size={15} />
+          </button>
+          <button
+            onClick={() => setCurrentScreen('board')}
+            className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 rounded-lg text-xs font-medium
+                       text-gray-600 hover:bg-gray-200 transition-all"
+          >
+            <ArrowLeft size={14} />
+            <span>Board</span>
+          </button>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Lightbulb className="text-blue-600" size={20} />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-800">{totalIdeas}</p>
-              <p className="text-sm text-gray-500">Total Ideas</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <Layers className="text-purple-600" size={20} />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-800">{totalClusters}</p>
-              <p className="text-sm text-gray-500">Themes Found</p>
+      {/* Stats Dashboard */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { icon: Lightbulb, label: 'Total Ideas', value: totalIdeas, color: 'bg-brand-navy-light text-brand-navy-mid' },
+          { icon: Layers, label: 'Themes Found', value: totalClusters, color: 'bg-purple-50 text-purple-500' },
+          { icon: TrendingUp, label: 'Largest Theme', value: topCluster.count, sublabel: topCluster.name, color: 'bg-amber-50 text-amber-500' },
+          { icon: Sparkles, label: 'AI Insights', value: summary?.insights?.length || 0, color: 'bg-brand-teal-light text-brand-teal' },
+        ].map((stat, i) => (
+          <div key={i} className="bg-white rounded-xl border border-gray-200/60 p-4 shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <div className={`p-2 rounded-lg ${stat.color}`}>
+                <stat.icon size={16} />
+              </div>
+              <div className="min-w-0">
+                <p className="font-mono text-xl font-semibold text-gray-800">{stat.value}</p>
+                <p className="text-xs text-gray-400 truncate">{stat.sublabel || stat.label}</p>
+              </div>
             </div>
           </div>
-        </div>
-        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-amber-100 rounded-lg">
-              <TrendingUp className="text-amber-600" size={20} />
-            </div>
-            <div>
-              <p className="text-lg font-bold text-gray-800 truncate">{topCluster.name || '—'}</p>
-              <p className="text-sm text-gray-500">Largest Theme ({topCluster.count} ideas)</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <Sparkles className="text-green-600" size={20} />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-800">
-                {summary?.insights?.length || 0}
-              </p>
-              <p className="text-sm text-gray-500">AI Insights</p>
-            </div>
-          </div>
-        </div>
+        ))}
       </div>
 
-      {/* AI Summary Section */}
+      {/* AI Summary */}
       {summary && (
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
-          <div className="flex items-start justify-between gap-4 mb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-purple-100 to-pink-100 rounded-xl">
-                <FileText className="text-purple-600" size={20} />
+        <div className="bg-white rounded-xl border border-gray-200/60 p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-purple-50 rounded-lg">
+                <FileText className="text-purple-500" size={16} />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-800">AI-Generated Summary</h3>
-                <p className="text-sm text-gray-500">Key insights from your brainstorming session</p>
+                <h3 className="text-sm font-semibold text-gray-800">Session Summary</h3>
+                <p className="text-xs text-gray-400">AI-generated from your brainstorming</p>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-1.5">
               <button
                 onClick={handleCopySummary}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors text-sm"
+                className="flex items-center gap-1 px-2.5 py-1.5 text-gray-400 hover:bg-gray-100 rounded-lg transition-colors text-xs"
               >
-                {copiedSummary ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
-                <span>{copiedSummary ? 'Copied!' : 'Copy'}</span>
+                {copiedSummary ? <Check size={13} className="text-brand-teal" /> : <Copy size={13} />}
+                <span>{copiedSummary ? 'Copied' : 'Copy'}</span>
               </button>
               <button
                 onClick={handleExport}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors text-sm"
+                className="flex items-center gap-1 px-2.5 py-1.5 text-gray-400 hover:bg-gray-100 rounded-lg transition-colors text-xs"
               >
-                <Download size={16} />
+                <Download size={13} />
                 <span>Export</span>
               </button>
             </div>
           </div>
 
-          <div className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-100 space-y-4">
-            <p className="text-gray-700 font-medium">{summary.overview}</p>
+          <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+            <p className="text-sm text-gray-700 leading-relaxed">{summary.overview}</p>
 
             {summary.insights?.length > 0 && (
               <div>
-                <p className="font-semibold text-purple-800 mb-2">Key Insights:</p>
-                <div className="space-y-2">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2">Key Insights</p>
+                <div className="space-y-1.5">
                   {summary.insights.map((insight, i) => (
-                    <p key={i} className="text-gray-700 flex items-start gap-2">
-                      <span>{insight.icon}</span>
+                    <p key={i} className="text-xs text-gray-600 flex items-start gap-2 leading-relaxed">
+                      <span className="text-sm">{insight.icon}</span>
                       <span>{insight.text}</span>
                     </p>
                   ))}
@@ -352,11 +324,12 @@ const AIClusteringView = () => {
 
             {summary.recommendations?.length > 0 && (
               <div>
-                <p className="font-semibold text-purple-800 mb-2">Recommended Actions:</p>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2">Recommendations</p>
                 <ol className="space-y-1">
                   {summary.recommendations.map((rec, i) => (
-                    <li key={i} className="text-gray-700 ml-4">
-                      {i + 1}. {rec}
+                    <li key={i} className="text-xs text-gray-600 flex items-start gap-2 leading-relaxed">
+                      <span className="font-mono text-gray-400 text-xs">{i + 1}.</span>
+                      <span>{rec}</span>
                     </li>
                   ))}
                 </ol>
@@ -367,141 +340,129 @@ const AIClusteringView = () => {
       )}
 
       {/* Theme Clusters */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-          <Layers size={20} className="text-purple-500" />
+      <div className="space-y-3">
+        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+          <Layers size={12} className="text-purple-400" />
           Theme Clusters
         </h3>
 
-        {clusters.map((cluster) => {
-          const IconComponent = ICON_MAP[cluster.icon] || Layers;
-          const isExpanded = expandedClusters[cluster.id];
-          const color = cluster.color || {};
+        <div className="grid md:grid-cols-2 gap-3">
+          {clusters.map((cluster, clusterIndex) => {
+            const IconComponent = ICON_MAP[cluster.icon] || Layers;
+            const isExpanded = expandedClusters[cluster.id];
+            const color = cluster.color || {};
+            const dotColor = CLUSTER_COLORS[clusterIndex % CLUSTER_COLORS.length];
 
-          return (
-            <div
-              key={cluster.id}
-              className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden transition-all duration-200 hover:shadow-lg"
-            >
-              {/* Cluster Header */}
-              <button
-                onClick={() => toggleCluster(cluster.id)}
-                className={`w-full px-5 py-4 flex items-center justify-between ${color.bg || 'bg-gray-50'} 
-                           border-b ${color.border || 'border-gray-200'} hover:brightness-95 transition-all`}
+            return (
+              <div
+                key={cluster.id}
+                className="bg-white rounded-xl border border-gray-200/60 overflow-hidden shadow-sm hover:shadow-md transition-all"
               >
-                <div className="flex items-center gap-3">
-                  <div className={`p-2.5 bg-white rounded-xl border ${color.border || 'border-gray-200'} shadow-sm`}>
-                    <IconComponent className={color.icon || 'text-gray-500'} size={22} />
+                {/* Cluster Header */}
+                <button
+                  onClick={() => toggleCluster(cluster.id)}
+                  className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-gray-50/50 transition-all"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div 
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: dotColor }}
+                    ></div>
+                    <div className="text-left min-w-0">
+                      <h4 className="text-sm font-semibold text-gray-800 truncate">{cluster.name}</h4>
+                      <p className="text-xs text-gray-400 truncate mt-0.5">{cluster.summary}</p>
+                    </div>
                   </div>
-                  <div className="text-left">
-                    <h4 className={`font-semibold ${color.text || 'text-gray-700'} text-lg`}>
-                      {cluster.name}
-                    </h4>
-                    <p className="text-sm text-gray-600 mt-0.5">{cluster.summary}</p>
+                  <div className="flex items-center gap-2.5 flex-shrink-0 ml-3">
+                    <span className="font-mono text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">
+                      {cluster.ideas.length}
+                    </span>
+                    {isExpanded ? (
+                      <ChevronDown className="text-gray-300" size={16} />
+                    ) : (
+                      <ChevronRight className="text-gray-300" size={16} />
+                    )}
                   </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span
-                    className={`px-3 py-1 ${color.badge || 'bg-gray-100'} border ${
-                      color.border || 'border-gray-200'
-                    } rounded-full text-sm font-medium ${color.text || 'text-gray-700'}`}
-                  >
-                    {cluster.ideas.length} idea{cluster.ideas.length !== 1 ? 's' : ''}
-                  </span>
-                  {isExpanded ? (
-                    <ChevronDown className="text-gray-400" size={20} />
-                  ) : (
-                    <ChevronRight className="text-gray-400" size={20} />
-                  )}
-                </div>
-              </button>
+                </button>
 
-              {/* Cluster Ideas */}
-              {isExpanded && (
-                <div className="p-4 space-y-3 bg-gray-50/50">
-                  {cluster.ideas.map((idea) => (
-                    <div
-                      key={idea.id}
-                      className="p-4 bg-white rounded-lg border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <p className="text-gray-800 leading-relaxed">{idea.text}</p>
-                          {idea.original_text && idea.original_text !== idea.text && (
-                            <p className="text-xs text-gray-400 mt-1 italic">
-                              Original: {idea.original_text}
-                            </p>
-                          )}
-                          <div className="flex items-center gap-4 mt-3 flex-wrap">
-                            <span className="text-sm text-gray-500 flex items-center gap-1">
-                              <Users size={14} />
-                              {idea.author}
+                {/* Cluster Ideas */}
+                {isExpanded && (
+                  <div className="px-4 pb-4 pt-1 space-y-2 border-t border-gray-50 animate-fade-in">
+                    {cluster.ideas.map((idea) => (
+                      <div
+                        key={idea.id}
+                        className="p-3 bg-gray-50 rounded-lg border border-gray-100 hover:border-gray-200 transition-all"
+                      >
+                        <p className="text-xs text-gray-800 leading-relaxed">{idea.text}</p>
+                        {idea.original_text && idea.original_text !== idea.text && (
+                          <p className="text-xs text-gray-400 mt-1.5 italic">
+                            Original: {idea.original_text}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-3 mt-2 flex-wrap">
+                          <span className="text-xs text-gray-400 flex items-center gap-1 font-mono">
+                            <Users size={11} />
+                            {idea.author}
+                          </span>
+                          {idea.time && (
+                            <span className="text-xs text-gray-300 flex items-center gap-1 font-mono">
+                              <Clock size={11} />
+                              {typeof idea.time === 'string' && idea.time.includes('T')
+                                ? new Date(idea.time).toLocaleTimeString()
+                                : idea.time}
                             </span>
-                            {idea.time && (
-                              <span className="text-sm text-gray-400 flex items-center gap-1">
-                                <Clock size={14} />
-                                {typeof idea.time === 'string' && idea.time.includes('T')
-                                  ? new Date(idea.time).toLocaleTimeString()
-                                  : idea.time}
-                              </span>
-                            )}
-                            {idea.is_hesitant && (
-                              <span className="px-2 py-0.5 bg-orange-50 text-orange-600 rounded text-xs font-medium">
-                                hesitant
-                              </span>
-                            )}
-                            {idea.tags?.length > 0 && (
-                              <div className="flex gap-1.5 flex-wrap">
-                                {idea.tags.map((tag, ti) => (
-                                  <span
-                                    key={ti}
-                                    className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-xs font-medium"
-                                  >
-                                    {tag}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                            {idea.entities?.length > 0 && (
-                              <div className="flex gap-1.5 flex-wrap">
-                                {idea.entities.map((ent, ei) => (
-                                  <span
-                                    key={ei}
-                                    className="px-2 py-0.5 bg-purple-50 text-purple-600 rounded text-xs font-medium"
-                                  >
-                                    {ent.text || ent}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
+                          )}
+                          {idea.is_hesitant && (
+                            <span className="px-2 py-0.5 bg-hesitation-med text-hesitation-med-text rounded text-xs font-mono font-medium">
+                              hesitant
+                            </span>
+                          )}
+                          {idea.tags?.length > 0 && (
+                            <div className="flex gap-1 flex-wrap">
+                              {idea.tags.map((tag, ti) => (
+                                <span key={ti} className="px-2 py-0.5 bg-brand-navy-light text-brand-navy-mid rounded text-xs font-mono">
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {idea.entities?.length > 0 && (
+                            <div className="flex gap-1 flex-wrap">
+                              {idea.entities.map((ent, ei) => (
+                                <span key={ei} className="px-2 py-0.5 bg-entity-sprint-bg text-entity-sprint-text rounded text-xs font-mono">
+                                  {ent.text || ent}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Action Bar */}
-      <div className="bg-white rounded-xl shadow-md border border-gray-100 p-4 flex items-center justify-between">
-        <p className="text-sm text-gray-500">
-          <Sparkles size={14} className="inline mr-1 text-purple-500" />
-          Clusters generated using AI based on idea content and semantic similarity
+      <div className="bg-white rounded-xl border border-gray-200/60 p-4 flex items-center justify-between shadow-sm">
+        <p className="text-xs text-gray-400 flex items-center gap-1.5">
+          <Sparkles size={12} className="text-purple-400" />
+          <span className="font-mono">Clusters generated using AI semantic similarity</span>
         </p>
         <div className="flex gap-2">
           <button
             onClick={() => setCurrentScreen('capture')}
-            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+            className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors"
           >
             Add More Ideas
           </button>
           <button
             onClick={handleExport}
-            className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium shadow-lg shadow-purple-500/25 hover:shadow-xl hover:shadow-purple-500/30 transition-all"
+            className="px-3 py-2 bg-brand-navy text-brand-navy-light rounded-lg text-xs font-medium
+                       shadow-md shadow-brand-navy/15 hover:shadow-lg transition-all"
           >
             Export Report
           </button>

@@ -13,6 +13,8 @@ import {
   AlertCircle,
   Keyboard,
   Brain,
+  Sparkles,
+  ArrowRight,
 } from 'lucide-react';
 import useBrainstormStore from '../store/brainstormStore';
 import { processIdeaForPreview, processTypingPipeline } from '../api/brainstormApi';
@@ -41,6 +43,7 @@ const IdeaCapture = () => {
     setPreviewData,
     setCurrentScreen,
     resetTypingMetrics,
+    participantId,
     incrementDelFreq,
     incrementLeftFreq,
     getTypingMetricsForApi,
@@ -50,6 +53,7 @@ const IdeaCapture = () => {
     showAiAssistant,
     hideAiAssistant,
     resetAiAssistant,
+    typingMetrics,
   } = useBrainstormStore();
 
   // ── Speech hesitation hook ────────────────────────────────────────
@@ -121,10 +125,6 @@ const IdeaCapture = () => {
   }, [hesitationResult, setAiAssistant]);
 
   // Show live transcript while recording.
-  // We track liveTranscript changes and always push them to the textarea.
-  // The guard against stale updates is the ref comparison, not isRecording state,
-  // because React may batch setState and deliver transcript updates before
-  // isRecording becomes true.
   const lastLiveTranscriptRef = useRef('');
   useEffect(() => {
     if (!liveTranscript || liveTranscript === lastLiveTranscriptRef.current) return;
@@ -218,8 +218,7 @@ const IdeaCapture = () => {
     try {
       const metrics = getTypingMetricsForApi();
       if (metrics.TotTime < 500) metrics.TotTime = 1000;
-
-      const previewResult = await processIdeaForPreview(ideaText.trim(), metrics);
+      const previewResult = await processIdeaForPreview(ideaText.trim(), metrics, sessionId, participantId);
       
       setDraftIdea({
         original_text: ideaText.trim(),
@@ -243,143 +242,153 @@ const IdeaCapture = () => {
     }
   }, [ideaText, triggerAiAssist]);
 
-  const getTypingStatusMessage = () => {
-    switch (typingStatus) {
-      case 'typing':
-        return '✏️ Typing...';
-      case 'paused':
-        return '🤔 Thinking...';
-      default:
-        return '💡 Ready to capture your idea';
-    }
-  };
-
   const showAiPanel = aiAssistant.isVisible || aiAssistant.isProcessing;
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className={`grid gap-6 transition-all duration-500 ${showAiPanel ? 'lg:grid-cols-[1fr_350px]' : 'grid-cols-1 max-w-3xl mx-auto'}`}>
+    <div className="max-w-7xl mx-auto animate-fade-in">
+      <div className={`flex gap-5 transition-all duration-500 ${showAiPanel ? '' : 'max-w-3xl mx-auto'}`}>
         {/* ── Left: Idea Workspace ──────────────────────────────────── */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-5">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-white/20 rounded-xl">
-                <Lightbulb className="text-white" size={24} />
+        <div className="flex-1 min-w-0">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200/60 overflow-hidden">
+            {/* Compact Header */}
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-brand-navy-light rounded-xl">
+                  <Lightbulb className="text-brand-navy-mid" size={18} />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-800">Capture Your Idea</h2>
+                  <p className="text-xs text-gray-400">Type naturally — AI activates after a 3s pause</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-xl font-semibold text-white">Share Your Idea</h2>
-                <p className="text-blue-100 text-sm mt-0.5">
-                  Every idea matters — express yourself freely
-                </p>
+              {/* Typing Status Indicator */}
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-300
+                ${typingStatus === 'typing' 
+                  ? 'bg-brand-teal-light text-brand-teal' 
+                  : typingStatus === 'paused' 
+                    ? 'bg-amber-50 text-amber-600' 
+                    : 'bg-gray-50 text-gray-400'
+                }`}>
+                {typingStatus === 'typing' && (
+                  <>
+                    <div className="flex gap-0.5">
+                      <span className="w-1 h-1 bg-brand-teal rounded-full animate-bounce" style={{animationDelay: '0ms'}}></span>
+                      <span className="w-1 h-1 bg-brand-teal rounded-full animate-bounce" style={{animationDelay: '150ms'}}></span>
+                      <span className="w-1 h-1 bg-brand-teal rounded-full animate-bounce" style={{animationDelay: '300ms'}}></span>
+                    </div>
+                    <span>Typing</span>
+                  </>
+                )}
+                {typingStatus === 'paused' && (
+                  <>
+                    <Brain size={12} className="animate-pulse" />
+                    <span>AI analyzing...</span>
+                  </>
+                )}
+                {typingStatus === 'idle' && (
+                  <>
+                    <Keyboard size={12} />
+                    <span>Ready</span>
+                  </>
+                )}
               </div>
             </div>
-          </div>
 
-          {/* Content */}
-          <div className="p-6">
-            {/* Error Alert */}
-            {(localError || speechError) && (
-              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
-                <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={20} />
-                <p className="text-red-700 text-sm">{localError || speechError}</p>
-              </div>
-            )}
-
-            {/* Text Input Area */}
-            <div className="relative">
-              <textarea
-                ref={textareaRef}
-                value={ideaText}
-                onChange={handleTextChange}
-                onKeyDown={handleKeyDown}
-                placeholder="What's your idea? Don't worry about perfect wording — we'll help you refine it..."
-                className="w-full h-44 p-4 text-gray-800 bg-gray-50 border border-gray-200 rounded-xl 
-                           resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                           placeholder:text-gray-400 transition-all duration-200"
-                disabled={isLoading}
-              />
-              <div className="absolute bottom-3 right-3 text-xs text-gray-400">
-                {ideaText.length} characters
-              </div>
-            </div>
-
-            {/* Typing Status Bar */}
-            <div className="mt-3 flex items-center gap-2 text-sm">
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-300
-                ${typingStatus === 'typing' ? 'bg-green-100 text-green-700' : 
-                  typingStatus === 'paused' ? 'bg-amber-100 text-amber-700' :
-                  'bg-gray-100 text-gray-600'}`}>
-                <Keyboard size={14} />
-                <span>{getTypingStatusMessage()}</span>
-              </div>
-              {typingStatus === 'paused' && ideaText.trim().length >= 5 && (
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 text-blue-600 text-xs">
-                  <Brain size={12} />
-                  <span>AI is analyzing...</span>
+            {/* Content */}
+            <div className="p-5">
+              {/* Error Alert */}
+              {(localError || speechError) && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl flex items-start gap-2.5">
+                  <AlertCircle className="text-red-400 flex-shrink-0 mt-0.5" size={16} />
+                  <p className="text-red-600 text-xs leading-relaxed">{localError || speechError}</p>
                 </div>
               )}
-            </div>
 
-            {/* Action Buttons Row */}
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
-              {/* Left side actions */}
-              <div className="flex items-center gap-3">
-                <SpeechMicButton
-                  isRecording={isRecording}
-                  audioLevel={audioLevel}
-                  onStart={startRecording}
-                  onStop={stopRecording}
+              {/* Text Input Area */}
+              <div className="relative group">
+                <textarea
+                  ref={textareaRef}
+                  value={ideaText}
+                  onChange={handleTextChange}
+                  onKeyDown={handleKeyDown}
+                  placeholder="What's your idea? Don't worry about perfect wording — we'll help you refine it..."
+                  className="w-full h-48 p-4 text-gray-800 bg-gray-50/50 border border-gray-200 rounded-xl 
+                             resize-none focus:ring-2 focus:ring-brand-navy-mid/15 focus:border-brand-navy-mid/30
+                             focus:bg-white placeholder:text-gray-300 transition-all duration-200 text-sm leading-relaxed outline-none"
                   disabled={isLoading}
                 />
+                {/* Character count */}
+                <div className="absolute bottom-3 right-3 font-mono text-xs text-gray-300">
+                  {ideaText.length}
+                </div>
+              </div>
+
+              {/* Footer Bar */}
+              <div className="mt-4 flex items-center justify-between gap-3">
+                {/* Left side — Metrics + Voice + Anonymous */}
+                <div className="flex items-center gap-2.5">
+                  {/* Typing Metrics Chips */}
+                  <div className="flex items-center gap-1.5">
+                    {[
+                      { label: 'del', value: typingMetrics.delFreq },
+                      { label: 'nav', value: typingMetrics.leftFreq },
+                      { label: 'time', value: `${Math.round(typingMetrics.TotTime / 1000)}s` },
+                    ].map((m, i) => (
+                      <span key={i} className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 rounded text-gray-400 font-mono text-xs">
+                        {m.label} <span className="text-gray-600 font-medium">{m.value}</span>
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="w-px h-5 bg-gray-200"></div>
+
+                  {/* Voice Button */}
+                  <SpeechMicButton
+                    isRecording={isRecording}
+                    audioLevel={audioLevel}
+                    onStart={startRecording}
+                    onStop={stopRecording}
+                    disabled={isLoading}
+                  />
+
+                  {/* Anonymous Toggle */}
+                  <button
+                    onClick={() => setIsAnonymous(!isAnonymous)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all
+                      ${isAnonymous 
+                        ? 'bg-purple-50 text-purple-600 border border-purple-200' 
+                        : 'bg-gray-50 text-gray-400 border border-gray-200 hover:bg-gray-100'
+                      }`}
+                  >
+                    {isAnonymous ? <UserX size={13} /> : <User size={13} />}
+                    <span>{isAnonymous ? 'Anon' : 'Named'}</span>
+                  </button>
+                </div>
+
+                {/* Submit Button */}
                 <button
-                  onClick={() => setIsAnonymous(!isAnonymous)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all duration-200
-                    ${isAnonymous 
-                      ? 'bg-purple-100 text-purple-700 border-2 border-purple-300' 
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
+                  onClick={handleSubmit}
+                  disabled={isLoading || !ideaText.trim()}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-brand-navy text-brand-navy-light
+                             rounded-xl text-xs font-semibold shadow-lg shadow-brand-navy/15
+                             hover:shadow-xl hover:shadow-brand-navy/25
+                             disabled:opacity-40 disabled:cursor-not-allowed
+                             transition-all duration-200"
                 >
-                  {isAnonymous ? (
-                    <><UserX size={18} /><span>Anonymous</span></>
+                  {isLoading ? (
+                    <><Loader2 className="animate-spin" size={14} /><span>Processing...</span></>
                   ) : (
-                    <><User size={18} /><span>Named</span></>
+                    <><Send size={14} /><span>Submit Idea</span><ArrowRight size={14} /></>
                   )}
                 </button>
               </div>
-
-              {/* Submit Button */}
-              <button
-                onClick={handleSubmit}
-                disabled={isLoading || !ideaText.trim()}
-                className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 
-                           text-white rounded-xl font-semibold shadow-lg shadow-blue-500/30
-                           hover:shadow-xl hover:shadow-blue-500/40 hover:scale-105
-                           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100
-                           transition-all duration-200"
-              >
-                {isLoading ? (
-                  <><Loader2 className="animate-spin" size={18} /><span>Processing...</span></>
-                ) : (
-                  <><Send size={18} /><span>Submit Idea</span></>
-                )}
-              </button>
-            </div>
-
-            {/* Help Text */}
-            <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
-              <p className="text-sm text-blue-800">
-                <strong className="text-blue-900">💡 Tip:</strong> Just type naturally! 
-                Pause for 3 seconds and our AI will suggest improvements, continuations, and 
-                guiding questions. You'll have a chance to review before sharing.
-              </p>
             </div>
           </div>
         </div>
 
         {/* ── Right: AI Assistant Panel ─────────────────────────────── */}
         {showAiPanel && (
-          <div className="lg:sticky lg:top-24 lg:self-start">
+          <div className="w-80 flex-shrink-0 lg:sticky lg:top-24 lg:self-start animate-slide-right">
             <AIAssistantPanel
               isVisible={aiAssistant.isVisible}
               isProcessing={aiAssistant.isProcessing}

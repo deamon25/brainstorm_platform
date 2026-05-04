@@ -155,10 +155,10 @@ export const analyzeIdea = async (text, sessionId = null, participantId = null) 
 };
 
 // ============= Combined Analysis (for Preview Mode) =============
-export const processIdeaForPreview = async (text, typingMetrics) => {
+export const processIdeaForPreview = async (text, typingMetrics, sessionId = null, participantId = null) => {
   try {
     // Use unified typing pipeline for full AI processing
-    const result = await processTypingPipeline(text, typingMetrics);
+    const result = await processTypingPipeline(text, typingMetrics, sessionId, participantId);
 
     const entityMap = result.entity_map || {};
 

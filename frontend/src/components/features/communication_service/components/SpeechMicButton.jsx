@@ -1,7 +1,7 @@
 /**
  * SpeechMicButton
  *
- * Compact microphone button with:
+ * Modern mic button with:
  *  - Idle / Recording states
  *  - Live audio-level waveform bars (animated while recording)
  *  - Smooth pulse ring animation when the mic is active
@@ -47,7 +47,7 @@ export default function SpeechMicButton({
       <div className="relative">
         {/* Pulse ring — shown only while recording */}
         {isRecording && (
-          <span className="absolute inset-0 rounded-xl animate-ping bg-red-400 opacity-30" />
+          <span className="absolute inset-0 rounded-xl animate-ping bg-red-400 opacity-20" />
         )}
 
         <button
@@ -56,23 +56,23 @@ export default function SpeechMicButton({
           disabled={disabled}
           aria-label={isRecording ? 'Stop recording' : 'Start voice recording'}
           className={[
-            'relative flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium',
+            'relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium',
             'transition-all duration-200 select-none',
             isRecording
-              ? 'bg-red-500 text-white hover:bg-red-600 shadow-md shadow-red-200'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
-            disabled ? 'opacity-60 cursor-not-allowed' : '',
+              ? 'bg-gradient-to-r from-red-500 to-rose-500 text-white shadow-md shadow-red-200/50'
+              : 'bg-gray-50 text-gray-500 border border-gray-200 hover:bg-red-50 hover:text-red-500 hover:border-red-200',
+            disabled ? 'opacity-50 cursor-not-allowed' : '',
           ].join(' ')}
         >
           {isRecording ? (
             <>
-              <MicOff size={18} />
-              <span className="text-sm">Stop</span>
+              <MicOff size={13} />
+              <span>Stop</span>
             </>
           ) : (
             <>
-              <Mic size={18} />
-              <span className="text-sm">Voice</span>
+              <Mic size={13} />
+              <span>Voice</span>
             </>
           )}
         </button>
@@ -81,15 +81,15 @@ export default function SpeechMicButton({
       {/* ── Waveform bars ─────────────────────── */}
       {isRecording && (
         <div
-          className="flex items-end gap-0.5 h-6"
+          className="flex items-end gap-0.5 h-5"
           aria-hidden="true"
           title="Live audio level"
         >
           {barHeights.map((h, i) => (
             <div
               key={i}
-              className="w-1 rounded-full bg-red-400 transition-all duration-75"
-              style={{ height: `${Math.max(4, (h / 100) * 24)}px` }}
+              className="w-0.5 rounded-full bg-red-400 transition-all duration-75"
+              style={{ height: `${Math.max(3, (h / 100) * 20)}px` }}
             />
           ))}
         </div>
@@ -97,8 +97,9 @@ export default function SpeechMicButton({
 
       {/* ── Recording label ───────────────────── */}
       {isRecording && (
-        <span className="text-xs font-medium text-red-600 animate-pulse select-none">
-          Recording…
+        <span className="flex items-center gap-1.5 text-xs font-medium text-red-500 select-none">
+          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+          REC
         </span>
       )}
     </div>

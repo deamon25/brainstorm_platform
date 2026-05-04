@@ -27,18 +27,7 @@ const FALLBACK_PROMPTS = [
 ];
 
 // Entity label → color mapping
-const ENTITY_COLORS = {
-  PERSON: 'bg-blue-100 text-blue-700 border-blue-200',
-  ORG: 'bg-green-100 text-green-700 border-green-200',
-  EVENT: 'bg-purple-100 text-purple-700 border-purple-200',
-  PRODUCT: 'bg-orange-100 text-orange-700 border-orange-200',
-  FEATURE: 'bg-pink-100 text-pink-700 border-pink-200',
-  DEFAULT: 'bg-gray-100 text-gray-700 border-gray-200',
-};
-
-function getEntityColor(label) {
-  return ENTITY_COLORS[label] || ENTITY_COLORS.DEFAULT;
-}
+import { getEntityColor } from '../utils/entityColor';
 
 export default function SpeechHesitationPanel({ hesitationResult, onDismiss, onSuggestionClick }) {
   const [visible, setVisible] = useState(false);
@@ -80,7 +69,7 @@ export default function SpeechHesitationPanel({ hesitationResult, onDismiss, onS
     <div
       className={[
         'fixed z-40 bottom-6 right-6 w-96 max-w-[calc(100vw-2rem)]',
-        'bg-white rounded-2xl shadow-2xl border border-indigo-100',
+        'bg-white rounded-2xl shadow-2xl shadow-gray-300/30 border border-gray-200/60',
         'transition-all duration-300 max-h-[80vh] overflow-y-auto',
         visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none',
       ].join(' ')}
@@ -88,35 +77,35 @@ export default function SpeechHesitationPanel({ hesitationResult, onDismiss, onS
       aria-label="AI suggestion panel"
     >
       {/* ── Header ───────────────────────────────────────── */}
-      <div className="flex items-start justify-between px-4 pt-4 pb-3 border-b border-indigo-50 sticky top-0 bg-white rounded-t-2xl">
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 bg-indigo-100 rounded-lg">
-            <Brain size={16} className="text-indigo-600" />
+      <div className="flex items-start justify-between px-4 pt-4 pb-3 border-b border-gray-100 sticky top-0 bg-white rounded-t-2xl">
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 bg-brand-navy-light rounded-xl">
+            <Brain size={16} className="text-brand-navy-mid" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-gray-800">You seem to be thinking…</p>
-            <p className="text-xs text-gray-400 mt-0.5">
-              Hesitation detected · {confidencePct}% confidence
+            <p className="text-sm font-semibold text-gray-800">Hesitation Detected</p>
+            <p className="text-xs text-gray-400 font-mono mt-0.5">
+              {confidencePct}% confidence
             </p>
           </div>
         </div>
         <button
           onClick={handleDismiss}
           aria-label="Dismiss suggestion panel"
-          className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          className="p-1.5 text-gray-300 hover:text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
         >
-          <X size={16} />
+          <X size={15} />
         </button>
       </div>
 
       {/* ── Transcript ──────────────────────────────────── */}
       {transcript && (
         <div className="px-4 pt-3 pb-2">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5 flex items-center gap-1">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
             <FileText size={11} className="text-gray-400" />
-            What you said
+            Transcript
           </p>
-          <p className="text-sm text-gray-700 bg-gray-50 rounded-xl px-3 py-2 border border-gray-100 italic">
+          <p className="text-xs text-gray-600 bg-gray-50 rounded-xl px-3 py-2.5 border border-gray-100 italic leading-relaxed">
             "{transcript}"
           </p>
         </div>
@@ -124,11 +113,11 @@ export default function SpeechHesitationPanel({ hesitationResult, onDismiss, onS
 
       {rephrasedTranscript && (
         <div className="px-4 pt-1 pb-2">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5 flex items-center gap-1">
-            <Sparkles size={11} className="text-indigo-400" />
-            AI refined{rephraseModel ? ` (${rephraseModel})` : ''}
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+            <Sparkles size={11} className="text-brand-navy-mid" />
+            AI Refined{rephraseModel ? ` · ${rephraseModel}` : ''}
           </p>
-          <p className="text-sm text-gray-800 bg-indigo-50 rounded-xl px-3 py-2 border border-indigo-100">
+          <p className="text-xs text-brand-navy bg-brand-navy-light/50 rounded-xl px-3 py-2.5 border border-blue-100/50 leading-relaxed">
             "{rephrasedTranscript}"
           </p>
         </div>
@@ -137,18 +126,18 @@ export default function SpeechHesitationPanel({ hesitationResult, onDismiss, onS
       {/* ── Entities ────────────────────────────────────── */}
       {entities.length > 0 && (
         <div className="px-4 pt-2 pb-2">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5 flex items-center gap-1">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
             <Tag size={11} className="text-gray-400" />
-            Detected entities
+            Entities
           </p>
           <div className="flex flex-wrap gap-1.5">
             {entities.map((ent, i) => (
               <span
                 key={i}
-                className={`text-xs px-2 py-0.5 rounded-full border ${getEntityColor(ent.label)}`}
+                className={`font-mono text-xs font-medium px-2 py-0.5 rounded ${getEntityColor(ent.label)}`}
               >
                 {ent.text}
-                <span className="ml-1 opacity-60 text-[10px]">{ent.label}</span>
+                <span className="ml-1 opacity-50 text-xs">{ent.label}</span>
               </span>
             ))}
           </div>
@@ -157,27 +146,27 @@ export default function SpeechHesitationPanel({ hesitationResult, onDismiss, onS
 
       {/* ── Idea Continuations ──────────────────────────── */}
       <div className="px-4 pt-3 pb-2">
-        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-1">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
           <Lightbulb size={11} className="text-amber-400" />
-          Continue your idea…
+          Continue your idea
         </p>
-        <ul className="space-y-1.5">
+        <ul className="space-y-1">
           {suggestions.map((s, i) => (
             <li key={i}>
               <button
                 type="button"
                 onClick={() => handleSuggestion(s)}
                 className="w-full text-left flex items-start gap-2 px-3 py-2 rounded-xl
-                           bg-indigo-50 hover:bg-indigo-100 transition-colors group"
+                           hover:bg-brand-navy-light/30 transition-colors group"
               >
                 <Sparkles
-                  size={14}
-                  className="text-indigo-400 group-hover:text-indigo-600 mt-0.5 flex-shrink-0"
+                  size={12}
+                  className="text-gray-300 group-hover:text-brand-navy-mid mt-0.5 flex-shrink-0"
                 />
-                <span className="text-xs text-gray-700 group-hover:text-gray-900">{s}</span>
+                <span className="text-xs text-gray-600 group-hover:text-gray-800 leading-relaxed">{s}</span>
                 <ChevronRight
                   size={12}
-                  className="ml-auto text-indigo-300 group-hover:text-indigo-500 flex-shrink-0 mt-0.5"
+                  className="ml-auto text-gray-200 group-hover:text-brand-navy-mid flex-shrink-0 mt-0.5"
                 />
               </button>
             </li>
@@ -187,8 +176,8 @@ export default function SpeechHesitationPanel({ hesitationResult, onDismiss, onS
 
       {/* ── Footer micro-copy ───────────────────────────── */}
       <div className="px-4 pb-3 pt-1 text-center">
-        <p className="text-xs text-gray-400">
-          Click any suggestion to add it as a starting point
+        <p className="text-xs text-gray-300 font-mono">
+          Click a suggestion to add it to your idea
         </p>
       </div>
     </div>

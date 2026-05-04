@@ -25,20 +25,10 @@ import {
   AlertTriangle,
   ArrowRight,
   RefreshCw,
+  Check,
 } from 'lucide-react';
 
-const ENTITY_COLORS = {
-  PERSON: 'bg-blue-100 text-blue-700 border-blue-200',
-  ORG: 'bg-green-100 text-green-700 border-green-200',
-  EVENT: 'bg-purple-100 text-purple-700 border-purple-200',
-  PRODUCT: 'bg-orange-100 text-orange-700 border-orange-200',
-  FEATURE: 'bg-pink-100 text-pink-700 border-pink-200',
-  DEFAULT: 'bg-gray-100 text-gray-700 border-gray-200',
-};
-
-function getEntityColor(label) {
-  return ENTITY_COLORS[label] || ENTITY_COLORS.DEFAULT;
-}
+import { getEntityColor } from '../utils/entityColor';
 
 export default function AIAssistantPanel({
   isVisible = false,
@@ -58,7 +48,6 @@ export default function AIAssistantPanel({
   onDismiss,
   onRegenerate,
 }) {
-  const [activeSection, setActiveSection] = useState('all');
   const [animateIn, setAnimateIn] = useState(false);
 
   useEffect(() => {
@@ -76,112 +65,121 @@ export default function AIAssistantPanel({
 
   return (
     <div
-      className={`bg-white rounded-2xl border border-blue-100 shadow-lg overflow-hidden
-                  transition-all duration-500 ease-out
+      className={`bg-white rounded-2xl border border-gray-200/60 shadow-sm overflow-hidden
+                  transition-all duration-400 ease-out
                   ${animateIn ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'}`}
     >
       {/* Panel Header */}
-      <div className="bg-gradient-to-r from-blue-500 to-indigo-500 px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-white/20 rounded-lg">
-              <Brain size={16} className="text-white" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-white">AI Assistant</p>
-              <p className="text-xs text-blue-100">
-                {isProcessing ? 'Analyzing...' : hasContent ? 'Ready to help' : 'Waiting for input'}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
-            {onRegenerate && hasContent && (
-              <button
-                onClick={onRegenerate}
-                disabled={isProcessing}
-                className="p-1.5 text-white/70 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
-                title="Regenerate suggestions"
-              >
-                <RefreshCw size={14} className={isProcessing ? 'animate-spin' : ''} />
-              </button>
-            )}
-            {onDismiss && (
-              <button
-                onClick={onDismiss}
-                className="p-1.5 text-white/70 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
+      <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-brand-navy-mid animate-pulse"></div>
+          <span className="text-xs font-semibold text-gray-700">AI Assistant</span>
+          <span className="text-xs text-gray-400">
+            {isProcessing ? '· analyzing' : hasContent ? '· ready' : ''}
+          </span>
+        </div>
+        <div className="flex items-center gap-0.5">
+          {onRegenerate && hasContent && (
+            <button
+              onClick={onRegenerate}
+              disabled={isProcessing}
+              className="p-1.5 text-gray-300 hover:text-brand-navy-mid hover:bg-brand-navy-light rounded-lg transition-all"
+              title="Regenerate"
+            >
+              <RefreshCw size={13} className={isProcessing ? 'animate-spin' : ''} />
+            </button>
+          )}
+          {onDismiss && (
+            <button
+              onClick={onDismiss}
+              className="p-1.5 text-gray-300 hover:text-gray-500 hover:bg-gray-100 rounded-lg transition-all"
+            >
+              <X size={13} />
+            </button>
+          )}
         </div>
       </div>
 
       {/* Processing State */}
       {isProcessing && (
-        <div className="px-4 py-8 flex flex-col items-center gap-3">
-          <Loader2 className="animate-spin text-blue-500" size={24} />
-          <p className="text-sm text-gray-500">Analyzing your idea...</p>
+        <div className="px-4 py-10 flex flex-col items-center gap-3">
+          <div className="relative">
+            <div className="w-10 h-10 bg-brand-navy-light rounded-xl flex items-center justify-center">
+              <Brain size={20} className="text-brand-navy-mid animate-pulse" />
+            </div>
+            <Sparkles size={14} className="absolute -top-1 -right-1 text-brand-navy-mid animate-bounce" />
+          </div>
+          <p className="text-xs text-gray-400">Analyzing your idea...</p>
+          <div className="flex gap-1">
+            <div className="w-1.5 h-1.5 bg-brand-navy-mid/40 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
+            <div className="w-1.5 h-1.5 bg-brand-navy-mid/40 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
+            <div className="w-1.5 h-1.5 bg-brand-navy-mid/40 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+          </div>
         </div>
       )}
 
       {/* Content */}
       {!isProcessing && hasContent && (
-        <div className="max-h-[calc(100vh-320px)] overflow-y-auto">
+        <div className="max-h-[calc(100vh-300px)] overflow-y-auto">
           {/* Hesitation Indicator */}
           {hesitation && (
             <div className="px-4 pt-3">
               {isHesitant ? (
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-2">
+                <div className="p-3 bg-hesitation-med/40 border border-amber-200/50 rounded-xl space-y-2">
                   <div className="flex items-center gap-2 text-xs">
-                    <AlertTriangle size={14} className="text-amber-500 flex-shrink-0" />
+                    <AlertTriangle size={13} className="text-amber-500 flex-shrink-0" />
                     <span className="text-amber-700 font-medium">
-                      Hesitation detected — here are some suggestions to help
+                      Hesitation detected — suggestions below
                     </span>
                   </div>
                   {/* Confidence scores — shown for both voice and typing */}
                   {hesitation.source === 'voice' && (
-                    <div className="flex gap-3 text-[11px]">
-                      <div className="flex items-center gap-1.5 px-2 py-1 bg-red-100 rounded-lg">
-                        <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
-                        <span className="text-red-700">
+                    <div className="flex gap-2 text-xs">
+                      <div className="flex items-center gap-1.5 px-2 py-1 bg-hesitation-high/60 rounded-lg">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>
+                        <span className="text-hesitation-high-text font-mono text-xs">
                           Hesitation: {(hesitation.confidence_hesitation * 100).toFixed(1)}%
                         </span>
                       </div>
-                      <div className="flex items-center gap-1.5 px-2 py-1 bg-green-100 rounded-lg">
-                        <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-                        <span className="text-green-700">
+                      <div className="flex items-center gap-1.5 px-2 py-1 bg-hesitation-low/60 rounded-lg">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+                        <span className="text-hesitation-low-text font-mono text-xs">
                           Fluent: {(hesitation.confidence_fluent * 100).toFixed(1)}%
                         </span>
                       </div>
                     </div>
                   )}
                   {hesitation.source === 'typing' && hesitation.hesitation_score != null && (
-                    <div className="text-[11px] flex items-center gap-1.5 px-2 py-1 bg-amber-100 rounded-lg w-fit">
-                      <div className="w-1.5 h-1.5 rounded-full bg-amber-600"></div>
-                      <span className="text-amber-800">
-                        Anomaly score: {hesitation.hesitation_score.toFixed(4)}
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full rounded-full bg-hesitation-bar transition-all duration-500"
+                          style={{ width: `${Math.min(100, Math.round(hesitation.hesitation_score * 100))}%` }}
+                        ></div>
+                      </div>
+                      <span className="font-mono text-amber-600 text-xs font-medium">
+                        Hesitation: {hesitation.hesitation_score.toFixed(4)}
                       </span>
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-xl space-y-2">
+                <div className="p-3 bg-hesitation-low/50 border border-green-200/50 rounded-xl space-y-2">
                   <div className="flex items-center gap-2 text-xs">
-                    <CheckCircle2 size={14} className="text-green-500 flex-shrink-0" />
-                    <span className="text-green-700 font-medium">Your idea sounds confident!</span>
+                    <CheckCircle2 size={13} className="text-green-500 flex-shrink-0" />
+                    <span className="text-green-700 font-medium">Confident delivery</span>
                   </div>
                   {hesitation.source === 'voice' && (
-                    <div className="flex gap-3 text-[11px]">
-                      <div className="flex items-center gap-1.5 px-2 py-1 bg-green-100 rounded-lg">
-                        <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-                        <span className="text-green-700">
+                    <div className="flex gap-2 text-xs">
+                      <div className="flex items-center gap-1.5 px-2 py-1 bg-hesitation-low rounded-lg">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                        <span className="text-hesitation-low-text font-mono text-xs">
                           Fluent: {(hesitation.confidence_fluent * 100).toFixed(1)}%
                         </span>
                       </div>
-                      <div className="flex items-center gap-1.5 px-2 py-1 bg-red-100 rounded-lg">
-                        <div className="w-1.5 h-1.5 rounded-full bg-red-400"></div>
-                        <span className="text-red-600">
+                      <div className="flex items-center gap-1.5 px-2 py-1 bg-hesitation-high/40 rounded-lg">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-300"></span>
+                        <span className="text-red-500 font-mono text-xs">
                           Hesitation: {(hesitation.confidence_hesitation * 100).toFixed(1)}%
                         </span>
                       </div>
@@ -195,48 +193,80 @@ export default function AIAssistantPanel({
           {/* Rephrased Suggestion */}
           {refinedIdea && refinedIdea !== originalText && (
             <div className="px-4 pt-3">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                <Sparkles size={12} className="text-blue-500" />
-                Refined Version
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                <Sparkles size={11} className="text-brand-navy-mid" />
+                Rephrased
                 {rephraseModel && (
-                  <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200 normal-case font-normal">
+                  <span className="ml-auto text-xs px-1.5 py-0.5 rounded bg-brand-navy-light text-brand-navy-mid font-mono font-normal normal-case">
                     {rephraseModel}
                   </span>
                 )}
               </p>
-              <div className="p-3 bg-blue-50 rounded-xl border border-blue-100">
-                <p className="text-sm text-gray-800 leading-relaxed">{refinedIdea}</p>
-                {onAcceptRephrase && (
-                  <button
-                    onClick={() => onAcceptRephrase(refinedIdea)}
-                    className="mt-2 flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
+              <div className="p-3 bg-brand-navy-light/50 rounded-xl border border-blue-100/50">
+                <p className="text-xs text-brand-navy leading-relaxed">{refinedIdea}</p>
+                <div className="flex gap-1.5 mt-2.5">
+                  {onAcceptRephrase && (
+                    <button
+                      onClick={() => onAcceptRephrase(refinedIdea)}
+                      className="flex items-center gap-1 text-xs font-medium text-white bg-brand-navy px-2.5 py-1 rounded-md hover:bg-brand-navy-mid transition-colors"
+                    >
+                      <Check size={11} />
+                      Accept
+                    </button>
+                  )}
+                  {onDismiss && (
+                    <button
+                      onClick={onDismiss}
+                      className="text-xs text-gray-400 border border-gray-200 px-2.5 py-1 rounded-md hover:bg-gray-50 transition-colors"
+                    >
+                      Dismiss
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Entities */}
+          {entities.length > 0 && (
+            <div className="px-4 pt-3">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                <Tag size={11} className="text-gray-400" />
+                Entities detected
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {entities.map((ent, i) => (
+                  <span
+                    key={i}
+                    className={`font-mono text-xs font-medium px-2 py-0.5 rounded ${getEntityColor(ent.label)}`}
                   >
-                    <CheckCircle2 size={12} />
-                    Use this version
-                  </button>
-                )}
+                    {ent.text}
+                    <span className="ml-1 opacity-50 text-xs">{ent.label}</span>
+                  </span>
+                ))}
               </div>
             </div>
           )}
 
           {/* Idea Continuations */}
           {ideaContinuations.length > 0 && (
-            <div className="px-4 pt-4">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                <Lightbulb size={12} className="text-amber-500" />
-                Idea Continuations
+            <div className="px-4 pt-3">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                <Lightbulb size={11} className="text-amber-400" />
+                Continue your idea
               </p>
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 {ideaContinuations.map((text, i) => (
                   <button
                     key={i}
                     onClick={() => onContinuationClick?.(text)}
-                    className="w-full text-left flex items-start gap-2 px-3 py-2.5 rounded-xl
-                               bg-amber-50 hover:bg-amber-100 border border-amber-100
-                               transition-all duration-200 group"
+                    className="w-full text-left px-3 py-2 rounded-lg text-xs text-gray-600 leading-relaxed
+                               hover:bg-brand-navy-light/30 hover:text-brand-navy transition-all group"
                   >
-                    <ArrowRight size={14} className="text-amber-400 group-hover:text-amber-600 mt-0.5 flex-shrink-0" />
-                    <span className="text-xs text-gray-700 group-hover:text-gray-900 leading-relaxed">{text}</span>
+                    <span className="inline-flex items-start gap-2">
+                      <ArrowRight size={12} className="text-gray-300 group-hover:text-brand-navy-mid mt-0.5 flex-shrink-0" />
+                      <span>{text}</span>
+                    </span>
                   </button>
                 ))}
               </div>
@@ -245,22 +275,23 @@ export default function AIAssistantPanel({
 
           {/* Guiding Questions */}
           {guidingQuestions.length > 0 && (
-            <div className="px-4 pt-4">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                <HelpCircle size={12} className="text-purple-500" />
-                Guiding Questions
+            <div className="px-4 pt-3">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                <HelpCircle size={11} className="text-purple-400" />
+                Guiding questions
               </p>
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 {guidingQuestions.map((q, i) => (
                   <button
                     key={i}
                     onClick={() => onQuestionClick?.(q)}
-                    className="w-full text-left flex items-start gap-2 px-3 py-2.5 rounded-xl
-                               bg-purple-50 hover:bg-purple-100 border border-purple-100
-                               transition-all duration-200 group"
+                    className="w-full text-left px-3 py-2 rounded-lg text-xs text-gray-600 leading-relaxed
+                               hover:bg-purple-50 hover:text-purple-700 transition-all group"
                   >
-                    <HelpCircle size={14} className="text-purple-400 group-hover:text-purple-600 mt-0.5 flex-shrink-0" />
-                    <span className="text-xs text-gray-700 group-hover:text-gray-900 leading-relaxed">{q}</span>
+                    <span className="inline-flex items-start gap-2">
+                      <HelpCircle size={12} className="text-gray-300 group-hover:text-purple-500 mt-0.5 flex-shrink-0" />
+                      <span>{q}</span>
+                    </span>
                   </button>
                 ))}
               </div>
@@ -269,53 +300,33 @@ export default function AIAssistantPanel({
 
           {/* Suggestions (from speech) */}
           {suggestions.length > 0 && ideaContinuations.length === 0 && (
-            <div className="px-4 pt-4">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                <Sparkles size={12} className="text-indigo-500" />
-                Continue Your Idea
+            <div className="px-4 pt-3">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                <Sparkles size={11} className="text-indigo-400" />
+                Suggestions
               </p>
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 {suggestions.map((s, i) => (
                   <button
                     key={i}
                     onClick={() => onSuggestionClick?.(s)}
-                    className="w-full text-left flex items-start gap-2 px-3 py-2.5 rounded-xl
-                               bg-indigo-50 hover:bg-indigo-100 border border-indigo-100
-                               transition-all duration-200 group"
+                    className="w-full text-left px-3 py-2 rounded-lg text-xs text-gray-600 leading-relaxed
+                               hover:bg-indigo-50 hover:text-indigo-700 transition-all group"
                   >
-                    <ChevronRight size={14} className="text-indigo-400 group-hover:text-indigo-600 mt-0.5 flex-shrink-0" />
-                    <span className="text-xs text-gray-700 group-hover:text-gray-900 leading-relaxed">{s}</span>
+                    <span className="inline-flex items-start gap-2">
+                      <ChevronRight size={12} className="text-gray-300 group-hover:text-indigo-500 mt-0.5 flex-shrink-0" />
+                      <span>{s}</span>
+                    </span>
                   </button>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Entities */}
-          {entities.length > 0 && (
-            <div className="px-4 pt-4 pb-3">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                <Tag size={12} className="text-gray-400" />
-                Detected Entities
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {entities.map((ent, i) => (
-                  <span
-                    key={i}
-                    className={`text-xs px-2 py-0.5 rounded-full border ${getEntityColor(ent.label)}`}
-                  >
-                    {ent.text}
-                    <span className="ml-1 opacity-60 text-[10px]">{ent.label}</span>
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Footer */}
-          <div className="px-4 py-2 border-t border-gray-50">
-            <p className="text-[10px] text-gray-400 text-center">
-              Click suggestions to add them to your idea
+          <div className="px-4 py-3 mt-1">
+            <p className="text-xs text-gray-300 text-center font-mono">
+              Click suggestions to append to your idea
             </p>
           </div>
         </div>
@@ -323,8 +334,10 @@ export default function AIAssistantPanel({
 
       {/* Empty State */}
       {!isProcessing && !hasContent && isVisible && (
-        <div className="px-4 py-6 text-center">
-          <Lightbulb size={24} className="mx-auto text-gray-300 mb-2" />
+        <div className="px-4 py-8 text-center">
+          <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center mx-auto mb-3">
+            <Brain size={18} className="text-gray-300" />
+          </div>
           <p className="text-xs text-gray-400">
             Start typing or speaking — AI suggestions will appear here
           </p>

@@ -17,9 +17,12 @@ import {
   ChevronUp,
   Loader2,
   RefreshCw,
+  ArrowLeft,
 } from 'lucide-react';
 import useBrainstormStore from '../store/brainstormStore';
 import { createIdea, rephraseText } from '../api/brainstormApi';
+
+import { getEntityColor } from '../utils/entityColor';
 
 const PreviewMode = () => {
   const [isEditing, setIsEditing] = useState(false);
@@ -46,12 +49,12 @@ const PreviewMode = () => {
   if (!previewData || !draftIdea) {
     return (
       <div className="max-w-3xl mx-auto p-6">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 text-center">
-          <AlertTriangle className="mx-auto text-yellow-500 mb-3\" size={32} />
-          <p className="text-yellow-800">No idea to preview. Please go back and enter your idea.</p>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-8 text-center">
+          <AlertTriangle className="mx-auto text-amber-400 mb-3" size={28} />
+          <p className="text-amber-700 text-sm mb-4">No idea to preview. Please go back and enter your idea.</p>
           <button
             onClick={() => setCurrentScreen('capture')}
-            className="mt-4 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
+            className="px-4 py-2 bg-brand-navy text-white rounded-lg text-sm font-medium hover:bg-brand-navy-mid transition-colors"
           >
             Back to Capture
           </button>
@@ -131,235 +134,218 @@ const PreviewMode = () => {
     }
   };
 
-  const getHesitationBadge = () => {
-    if (!hesitationInfo) return null;
-    
-    if (hesitationInfo.is_hesitant) {
-      return (
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-100 text-amber-800 rounded-full text-sm">
-          <AlertTriangle size={14} />
-          <span>We noticed some hesitation — take your time to review</span>
-        </div>
-      );
-    }
-    return (
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-green-100 text-green-800 rounded-full text-sm">
-        <Check size={14} />
-        <span>Your idea looks confident!</span>
-      </div>
-    );
-  };
-
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-5">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-white/20 rounded-xl">
-              <Eye className="text-white" size={24} />
+    <div className="max-w-4xl mx-auto animate-fade-in">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-brand-navy-light rounded-xl">
+            <Eye className="text-brand-navy-mid" size={18} />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-gray-800">Review Before Sharing</h2>
+            <p className="text-xs text-gray-400">Compare your original with the AI-enhanced version</p>
+          </div>
+        </div>
+        {/* Hesitation Badge */}
+        {hesitationInfo && (
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${
+            hesitationInfo.is_hesitant 
+              ? 'bg-hesitation-med text-hesitation-med-text' 
+              : 'bg-hesitation-low text-hesitation-low-text'
+          }`}>
+            {hesitationInfo.is_hesitant 
+              ? <><AlertTriangle size={13} /><span>Hesitation detected</span></>
+              : <><Check size={13} /><span>Confident delivery</span></>
+            }
+          </div>
+        )}
+      </div>
+
+      {/* Comparison Section */}
+      <div className="grid md:grid-cols-2 gap-4 mb-4">
+        {/* Original Text */}
+        <div className="bg-white rounded-xl border border-gray-200/60 p-5 shadow-sm">
+          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+            <span className="w-2 h-2 bg-gray-300 rounded-full"></span>
+            Original
+          </h3>
+          <p className="text-sm text-gray-700 leading-relaxed">{draftIdea.original_text}</p>
+        </div>
+
+        {/* Enhanced Text */}
+        <div className="bg-white rounded-xl border border-brand-navy-mid/20 p-5 shadow-sm relative">
+          <h3 className="text-xs font-semibold text-brand-navy-mid uppercase tracking-widest mb-3 flex items-center gap-1.5">
+            <Sparkles size={12} />
+            AI Enhanced
+            {rephraseModel && !isEditing && (
+              <span className="ml-auto text-xs px-1.5 py-0.5 rounded bg-brand-navy-light text-brand-navy-mid font-mono font-normal normal-case">
+                {rephraseModel}
+              </span>
+            )}
+          </h3>
+          {isEditing ? (
+            <textarea
+              value={editedText}
+              onChange={(e) => setEditedText(e.target.value)}
+              className="w-full h-full min-h-24 bg-gray-50 rounded-lg p-3 border border-brand-navy-mid/20 
+                         focus:ring-2 focus:ring-brand-navy-mid/15 resize-none text-sm outline-none"
+              autoFocus
+            />
+          ) : (
+            <p className="text-sm text-gray-800 leading-relaxed">{displayRephrasedText}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Analysis Summary */}
+      <div className="bg-white rounded-xl border border-gray-200/60 p-5 shadow-sm mb-4">
+        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">
+          Analysis Summary
+        </h4>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-gray-50 rounded-lg px-3 py-2.5">
+            <p className="text-xs text-gray-400 mb-0.5">Entities</p>
+            <p className="font-mono text-lg font-semibold text-gray-800">{previewData.entities?.length || 0}</p>
+          </div>
+          <div className="bg-gray-50 rounded-lg px-3 py-2.5">
+            <p className="text-xs text-gray-400 mb-0.5">Hesitation</p>
+            <p className="font-mono text-lg font-semibold text-gray-800">{hesitationInfo?.score?.toFixed(2) || '0.00'}</p>
+          </div>
+          <div className="bg-gray-50 rounded-lg px-3 py-2.5">
+            <p className="text-xs text-gray-400 mb-0.5">Suggestions</p>
+            <p className="font-mono text-lg font-semibold text-gray-800">{previewData.suggestions?.length || 0}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Entities */}
+      {previewData.entities && previewData.entities.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200/60 p-5 shadow-sm mb-4">
+          <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+            <Tag size={12} className="text-gray-400" />
+            Preserved Entities
+          </h4>
+          <div className="flex flex-wrap gap-2">
+            {previewData.entities.map((entity, idx) => (
+              <span
+                key={idx}
+                className={`font-mono text-xs font-medium px-2.5 py-1 rounded-lg ${getEntityColor(entity.label)}`}
+              >
+                {entity.text}
+                <span className="ml-1.5 opacity-50">{entity.label}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Expandable Technical Details */}
+      <button
+        onClick={() => setShowDetails(!showDetails)}
+        className="w-full flex items-center justify-between px-4 py-3 bg-white rounded-xl border border-gray-200/60 
+                   hover:bg-gray-50 transition-colors text-xs font-medium text-gray-500 mb-4 shadow-sm"
+      >
+        <span>Technical Details</span>
+        {showDetails ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+      </button>
+
+      {showDetails && (
+        <div className="bg-white rounded-xl border border-gray-200/60 p-5 shadow-sm mb-4 animate-fade-in">
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-gray-400 text-xs">Hesitation Score</span>
+              <p className="font-mono text-sm font-medium text-gray-800 mt-0.5">
+                {hesitationInfo?.score?.toFixed(4) || 'N/A'}
+              </p>
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-white">Review Before Sharing</h2>
-              <p className="text-purple-100 text-sm mt-0.5">
-                See how AI enhanced your idea — you have full control
+              <span className="text-gray-400 text-xs">Backspaces</span>
+              <p className="font-mono text-sm font-medium text-gray-800 mt-0.5">
+                {hesitationInfo?.metrics?.delFreq || draftIdea.typing_metrics?.delFreq || 0}
+              </p>
+            </div>
+            <div>
+              <span className="text-gray-400 text-xs">Cursor Movements</span>
+              <p className="font-mono text-sm font-medium text-gray-800 mt-0.5">
+                {hesitationInfo?.metrics?.leftFreq || draftIdea.typing_metrics?.leftFreq || 0}
+              </p>
+            </div>
+            <div>
+              <span className="text-gray-400 text-xs">Typing Time</span>
+              <p className="font-mono text-sm font-medium text-gray-800 mt-0.5">
+                {((hesitationInfo?.metrics?.TotTime || draftIdea.typing_metrics?.TotTime || 0) / 1000).toFixed(1)}s
               </p>
             </div>
           </div>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 space-y-6">
-          {/* Hesitation Badge */}
-          <div className="flex justify-center">
-            {getHesitationBadge()}
-          </div>
-
-          {/* Comparison Section */}
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Original Text */}
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2">
-                <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
-                Your Original
-              </h3>
-              <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 min-h-[120px]">
-                <p className="text-gray-700 leading-relaxed">{draftIdea.original_text}</p>
-              </div>
-            </div>
-
-            {/* Enhanced Text */}
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-purple-600 uppercase tracking-wide flex items-center gap-2">
-                <Sparkles size={14} />
-                AI Enhanced
-              </h3>
-              <div className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-200 min-h-[120px] relative">
-                {isEditing ? (
-                  <textarea
-                    value={editedText}
-                    onChange={(e) => setEditedText(e.target.value)}
-                    className="w-full h-full min-h-[100px] bg-white rounded-lg p-3 border border-purple-300 
-                               focus:ring-2 focus:ring-purple-500 resize-none"
-                    autoFocus
-                  />
-                ) : (
-                  <p className="text-gray-800 leading-relaxed">{displayRephrasedText}</p>
-                )}
-                {rephraseModel && !isEditing && (
-                  <span className="absolute top-3 right-3 text-[11px] px-2 py-0.5 rounded-full bg-white text-purple-700 border border-purple-200">
-                    {rephraseModel}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Arrow indicator for mobile */}
-          <div className="md:hidden flex justify-center">
-            <ArrowRight className="text-purple-400" size={24} />
-          </div>
-
-          {/* Entities Detected */}
-          {previewData.entities && previewData.entities.length > 0 && (
-            <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
-              <h4 className="text-sm font-semibold text-blue-700 mb-3 flex items-center gap-2">
-                <Tag size={16} />
-                Key Elements Preserved
-              </h4>
-              <div className="flex flex-wrap gap-2">
-                {previewData.entities.map((entity, idx) => (
-                  <span
-                    key={idx}
-                    className="px-3 py-1 bg-white text-blue-700 rounded-full text-sm font-medium
-                               border border-blue-200 shadow-sm"
-                  >
-                    {entity.text}
-                    <span className="ml-1 text-blue-400 text-xs">({entity.label})</span>
-                  </span>
-                ))}
-              </div>
+          {previewData.masked_text && (
+            <div className="pt-4 mt-4 border-t border-gray-100">
+              <span className="text-gray-400 text-xs">Entity-masked Text</span>
+              <p className="mt-1.5 font-mono text-xs text-gray-500 bg-gray-50 p-3 rounded-lg leading-relaxed">
+                {previewData.masked_text}
+              </p>
             </div>
           )}
+        </div>
+      )}
 
-          {/* Expandable Details */}
+      {/* Action Buttons */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+        <button
+          onClick={handleRegenerate}
+          disabled={isRegenerating}
+          className="flex items-center gap-2 px-4 py-2.5 text-gray-500 hover:text-brand-navy-mid 
+                     hover:bg-brand-navy-light/30 rounded-xl transition-all duration-200 text-xs font-medium"
+        >
+          <RefreshCw className={isRegenerating ? 'animate-spin' : ''} size={14} />
+          <span>Regenerate</span>
+        </button>
+
+        <div className="flex items-center gap-2.5">
           <button
-            onClick={() => setShowDetails(!showDetails)}
-            className="w-full flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+            onClick={handleReject}
+            className="flex items-center gap-1.5 px-4 py-2.5 text-gray-400 border border-gray-200 
+                       rounded-xl text-xs font-medium hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-all"
           >
-            <span className="text-sm font-medium text-gray-600">Technical Details</span>
-            {showDetails ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            <X size={14} />
+            <span>Discard</span>
           </button>
 
-          {showDetails && (
-            <div className="p-4 bg-gray-50 rounded-xl space-y-3 text-sm">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <span className="text-gray-500">Hesitation Score:</span>
-                  <span className="ml-2 font-mono text-gray-800">
-                    {hesitationInfo?.score?.toFixed(4) || 'N/A'}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-500">Backspaces:</span>
-                  <span className="ml-2 font-mono text-gray-800">
-                    {hesitationInfo?.metrics?.delFreq || draftIdea.typing_metrics?.delFreq || 0}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-500">Cursor Movements:</span>
-                  <span className="ml-2 font-mono text-gray-800">
-                    {hesitationInfo?.metrics?.leftFreq || draftIdea.typing_metrics?.leftFreq || 0}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-500">Typing Time:</span>
-                  <span className="ml-2 font-mono text-gray-800">
-                    {((hesitationInfo?.metrics?.TotTime || draftIdea.typing_metrics?.TotTime || 0) / 1000).toFixed(1)}s
-                  </span>
-                </div>
-              </div>
-              {previewData.masked_text && (
-                <div className="pt-3 border-t border-gray-200">
-                  <span className="text-gray-500">Entity-restored Text:</span>
-                  <p className="mt-1 font-mono text-xs text-gray-600 bg-white p-2 rounded">
-                    {previewData.masked_text}
-                  </p>
-                </div>
-              )}
-            </div>
+          {isEditing ? (
+            <button
+              onClick={handleSaveEdit}
+              className="flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 text-gray-700
+                         rounded-xl text-xs font-medium hover:bg-gray-200 transition-all"
+            >
+              <Check size={14} />
+              <span>Save Edit</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleEdit}
+              className="flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 text-gray-700
+                         rounded-xl text-xs font-medium hover:bg-gray-200 transition-all"
+            >
+              <Edit3 size={14} />
+              <span>Edit</span>
+            </button>
           )}
 
-          {/* Action Buttons */}
-          <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-gray-100">
-            {/* Left side - Regenerate */}
-            <button
-              onClick={handleRegenerate}
-              disabled={isRegenerating}
-              className="flex items-center gap-2 px-4 py-2.5 text-gray-600 hover:text-gray-800 
-                         hover:bg-gray-100 rounded-xl transition-all duration-200"
-            >
-              <RefreshCw className={isRegenerating ? 'animate-spin' : ''} size={18} />
-              <span>Regenerate</span>
-            </button>
-
-            {/* Right side - Main actions */}
-            <div className="flex items-center gap-3">
-              {/* Reject */}
-              <button
-                onClick={handleReject}
-                className="flex items-center gap-2 px-4 py-2.5 text-red-600 hover:bg-red-50 
-                           rounded-xl font-medium transition-all duration-200"
-              >
-                <X size={18} />
-                <span>Discard</span>
-              </button>
-
-              {/* Edit */}
-              {isEditing ? (
-                <button
-                  onClick={handleSaveEdit}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-700
-                             rounded-xl font-medium hover:bg-gray-200 transition-all duration-200"
-                >
-                  <Check size={18} />
-                  <span>Save Edit</span>
-                </button>
-              ) : (
-                <button
-                  onClick={handleEdit}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-700
-                             rounded-xl font-medium hover:bg-gray-200 transition-all duration-200"
-                >
-                  <Edit3 size={18} />
-                  <span>Edit</span>
-                </button>
-              )}
-
-              {/* Accept */}
-              <button
-                onClick={handleAccept}
-                disabled={isLoading || isEditing}
-                className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500
-                           text-white rounded-xl font-semibold shadow-lg shadow-green-500/30
-                           hover:shadow-xl hover:shadow-green-500/40 hover:scale-105
-                           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100
-                           transition-all duration-200"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="animate-spin" size={18} />
-                    <span>Saving...</span>
-                  </>
-                ) : (
-                  <>
-                    <Check size={18} />
-                    <span>Accept & Share</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
+          <button
+            onClick={handleAccept}
+            disabled={isLoading || isEditing}
+            className="flex items-center gap-2 px-6 py-2.5 bg-brand-navy text-brand-navy-light
+                       rounded-xl text-xs font-semibold shadow-lg shadow-brand-navy/20
+                       hover:shadow-xl hover:shadow-brand-navy/30
+                       disabled:opacity-40 disabled:cursor-not-allowed
+                       transition-all duration-200"
+          >
+            {isLoading ? (
+              <><Loader2 className="animate-spin" size={14} /><span>Saving...</span></>
+            ) : (
+              <><Check size={14} /><span>Confirm & Submit</span><ArrowRight size={14} /></>
+            )}
+          </button>
         </div>
       </div>
     </div>
